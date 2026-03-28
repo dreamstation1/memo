@@ -1,55 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>STATION v15 - FIX COMPLETE</title>
+    <title>STATION v17 - ULTIMATE</title>
     <meta charset="UTF-8">
     <style>
         :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --border: #334155; }
         body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
         
-        /* 🆔 입장 레이어 - 최상단 고정 */
+        /* 🆔 입장 레이어 */
         #login-overlay { position: fixed; inset: 0; background: #0f172a; z-index: 10000; display: flex; align-items: center; justify-content: center; }
         .login-box { background: var(--panel); padding: 40px; border-radius: 20px; border: 2px solid var(--accent); text-align: center; width: 320px; }
         .login-box input { padding: 15px; border-radius: 8px; border: 1px solid var(--accent); width: 80%; font-size: 18px; margin-bottom: 20px; background: #1e293b; color: white; }
 
-        /* 📜 사이드바 */
-        #sidebar { width: 300px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; }
+        /* 📜 사이드바 (기능 리스트 & 검색) */
+        #sidebar { width: 280px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; }
         #search-area { padding: 15px; border-bottom: 1px solid var(--border); }
         #tool-search { width: 100%; padding: 10px; border-radius: 5px; border: none; background: #0f172a; color: white; box-sizing: border-box; }
         #sidebar-scroll { flex-grow: 1; overflow-y: auto; padding: 10px; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-        button { padding: 10px; border: none; border-radius: 4px; cursor: pointer; background: #334155; color: white; font-size: 11px; font-weight: bold; }
-        button:active { transform: scale(0.95); background: var(--accent); color: black; }
+        button { padding: 8px; border: none; border-radius: 4px; cursor: pointer; background: #334155; color: white; font-size: 11px; font-weight: bold; }
+        button:active { background: var(--accent); color: black; }
 
-        /* 🌌 무한 보드 */
+        /* 🌌 무한 보드 엔진 */
         #viewport { flex-grow: 1; position: relative; overflow: hidden; background: #020617; }
-        #board { position: absolute; top: 0; left: 0; width: 5000px; height: 5000px; background-image: radial-gradient(#1e293b 1px, transparent 1px); background-size: 40px 40px; transform-origin: 0 0; }
+        #board { position: absolute; top: 0; left: 0; width: 10000px; height: 10000px; background-image: radial-gradient(#1e293b 1px, transparent 1px); background-size: 40px 40px; transform-origin: 0 0; }
         #canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
 
-        /* 📦 동기화 오브젝트 */
-        .obj { position: absolute; padding: 12px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: move; min-width: 200px; background: #fef08a; color: #000; z-index: 10; }
-        .obj-head { font-weight: bold; border-bottom: 1px solid rgba(0,0,0,0.1); margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 12px; }
+        /* 📦 동기화 오브젝트 (포스트잇, 사진, 투표 등) */
+        .obj { position: absolute; padding: 12px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: move; min-width: 150px; background: #fef08a; color: #000; z-index: 10; }
+        .obj-head { font-weight: bold; border-bottom: 1px solid rgba(0,0,0,0.1); margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 11px; }
         .obj textarea { width: 100%; height: 60px; background: rgba(255,255,255,0.3); border: none; border-radius: 4px; resize: none; }
+        .obj img { max-width: 300px; border-radius: 5px; pointer-events: none; }
 
-        /* 💬 채팅창 */
-        #chat-panel { width: 300px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
-        #chat-msgs { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+        /* 💬 채팅 */
+        #chat-panel { width: 280px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+        #chat-msgs { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
         .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 90%; }
-        .msg b { color: var(--accent); font-size: 11px; display: block; }
+        .msg b { color: var(--accent); font-size: 10px; display: block; }
     </style>
 </head>
-<body>
+<body ondragover="event.preventDefault()" ondrop="handleDrop(event)">
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--accent)">STATION v15</h2>
-        <input type="text" id="nick-input" placeholder="이름 입력..." onkeypress="if(event.keyCode==13) enterStation()">
-        <button onclick="enterStation()" style="width:100%; padding:15px; background:var(--accent); color:black;">아지트 입장</button>
+        <h2 style="color:var(--accent)">STATION v17</h2>
+        <input type="text" id="nick-input" placeholder="이름..." onkeypress="if(event.keyCode==13) window.enterStation()">
+        <button onclick="window.enterStation()">입장하기</button>
     </div>
 </div>
 
 <div id="sidebar">
-    <div id="search-area"><input type="text" id="tool-search" placeholder="🔍 기능 검색 (1~100)..." oninput="filterTools()"></div>
+    <div id="search-area"><input type="text" id="tool-search" placeholder="🔍 1~100 기능 검색..." oninput="window.filterTools()"></div>
     <div id="sidebar-scroll"><div class="grid-2" id="tool-grid"></div></div>
 </div>
 
@@ -58,7 +59,7 @@
 <div id="chat-panel">
     <div style="padding:15px; font-weight:bold; border-bottom:1px solid var(--border);">💬 실시간 채팅</div>
     <div id="chat-msgs"></div>
-    <div style="padding:10px;"><input type="text" id="chat-input" placeholder="엔터 전송" onkeypress="if(event.keyCode==13) sendChat()" style="width:100%; padding:10px; background:#0f172a; border:none; color:white; border-radius:5px; box-sizing:border-box;"></div>
+    <div style="padding:10px;"><input type="text" id="chat-input" placeholder="메시지..." onkeypress="if(event.keyCode==13) window.sendChat()" style="width:100%; padding:10px; background:#0f172a; border:none; color:white; border-radius:5px; box-sizing:border-box;"></div>
 </div>
 
 <script type="module">
@@ -72,43 +73,60 @@
 
     let myNick = "익명", camX = 0, camY = 0, currentTool = 'pen';
     const vp = document.getElementById('viewport'), bd = document.getElementById('board'), cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
-    cv.width = 5000; cv.height = 5000;
+    cv.width = 10000; cv.height = 10000;
 
-    // --- [100개 기능 리스트 생성] ---
+    // --- [1. 100개 기능 데이터 및 로직 정의] ---
     const toolData = [
         {id:1, n:"✏️ 펜", t:"pen"}, {id:2, n:"🧹 지우개", t:"eraser"}, {id:3, n:"🖱️ 이동", t:"move"}, {id:4, n:"↩️ 되돌리기", f:()=>alert('준비중')},
-        {id:5, n:"📋 포스트잇", o:"note"}, {id:6, n:"🔤 텍스트", o:"text"}, {id:7, n:"🏁 격자", f:toggleGrid}, {id:8, n:"💾 저장", f:saveMap},
-        {id:18, n:"🗳️ 투표", o:"poll"}, {id:19, n:"✌️ 가위바위보", o:"rsp"}, {id:20, n:"🎲 주사위", o:"dice"}, {id:40, n:"💣 초기화", f:adminReset}
+        {id:5, n:"📋 포스트잇", o:"note"}, {id:6, n:"🔤 텍스트", o:"text"}, {id:7, n:"🏁 격자", f:()=>bd.style.backgroundImage=bd.style.backgroundImage==='none'?'radial-gradient(#1e293b 1px, transparent 1px)':'none'},
+        {id:9, n:"💻 코드박스", o:"code"}, {id:10, n:"📊 표", o:"table"}, {id:11, n:"✅ 할일목록", o:"todo"}, {id:18, n:"🗳️ 투표", o:"poll"},
+        {id:19, n:"✌️ 가보", o:"rsp"}, {id:20, n:"🎲 주사위", o:"dice"}, {id:24, n:"💣 폭탄", o:"bomb"}, {id:33, n:"📁 사진전송", f:()=>alert('파일을 화면에 드래그하세요!')},
+        {id:40, n:"💣 전체초기화", f:()=> {if(prompt("비번")==='6974') remove(ref(db)).then(()=>location.reload());}}
     ];
-    for(let i=21; i<=100; i++) if(!toolData.find(x=>x.id===i)) toolData.push({id:i, n:`🛠️ 기능 ${i}`, o:"extra"});
+    for(let i=1; i<=100; i++) if(!toolData.find(x=>x.id===i)) toolData.push({id:i, n:`🛠️ 기능 ${i}`, o:"extra"});
 
-    // --- [입장 기능: 버튼 안눌림 해결] ---
+    // --- [2. 입장 및 UI] ---
     window.enterStation = () => {
-        const val = document.getElementById('nick-input').value.trim();
-        if(!val) return alert("이름을 적으라고!");
-        myNick = val;
-        document.getElementById('login-overlay').style.display = 'none'; // 레이어 숨기기
-        initTools();
-        push(chatRef, {u:"시스템", m:`${myNick}님 등장!`, s:true});
+        myNick = document.getElementById('nick-input').value.trim() || "익명";
+        document.getElementById('login-overlay').style.display = 'none';
+        initUI();
+        push(chatRef, {u:"시스템", m:`${myNick}님이 입장하셨습니다.`});
     };
 
-    function initTools() {
+    function initUI() {
         const grid = document.getElementById('tool-grid');
-        grid.innerHTML = ""; // 초기화
         toolData.sort((a,b)=>a.id-b.id).forEach(t => {
             const btn = document.createElement('button');
             btn.innerText = `${t.id}. ${t.n}`;
             btn.onclick = () => {
-                if(t.t) { currentTool = t.t; }
-                else if(t.o) createObj(t.o, t.n);
+                if(t.t) currentTool = t.t;
+                else if(t.o) push(objRef, {t:t.o, n:t.n, x:-camX+150, y:-camY+150, txt:"", v1:0, v2:0});
                 else if(t.f) t.f();
             };
             grid.appendChild(btn);
         });
     }
 
-    // --- [무한 이동 & 드로잉] ---
-    vp.oncontextmenu = e => e.preventDefault();
+    // --- [3. 사진 드래그 앤 드롭 전송] ---
+    window.handleDrop = (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                push(objRef, {t:'img', src: event.target.result, x:-camX+e.clientX-280, y:-camY+e.clientY, n:"사진"});
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // --- [4. 검색 기능] ---
+    window.filterTools = () => {
+        let v = document.getElementById('tool-search').value.toLowerCase();
+        document.querySelectorAll('#tool-grid button').forEach(b => b.style.display = b.innerText.toLowerCase().includes(v) ? 'block' : 'none');
+    };
+
+    // --- [5. 이동 및 드로잉 엔진] ---
     vp.onmousedown = e => {
         if(e.button === 2 || currentTool === 'move') {
             let sx = e.clientX-camX, sy = e.clientY-camY;
@@ -116,35 +134,34 @@
             window.onmouseup = () => window.onmousemove = null;
         }
     };
-
     vp.addEventListener('mousedown', e => {
         if(e.button !== 0 || currentTool === 'move') return;
         let r = vp.getBoundingClientRect(), lx = e.clientX-r.left-camX, ly = e.clientY-r.top-camY;
         window.onmousemove = m => {
             let cx = m.clientX-r.left-camX, cy = m.clientY-r.top-camY;
-            let color = currentTool==='eraser' ? '#020617' : '#38bdf8';
-            push(drawRef, {x1:lx, y1:ly, x2:cx, y2:cy, c:color});
+            push(drawRef, {x1:lx, y1:ly, x2:cx, y2:cy, c:currentTool==='eraser'?'#020617':'#38bdf8'});
             lx = cx; ly = cy;
         };
     });
-    function drawLine(x1,y1,x2,y2,c) { ctx.strokeStyle=c; ctx.lineWidth=3; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
-    onChildAdded(drawRef, s => { let d=s.val(); drawLine(d.x1, d.y1, d.x2, d.y2, d.c); });
+    onChildAdded(drawRef, s => {
+        let d=s.val(); ctx.strokeStyle=d.c; ctx.lineWidth=3; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(d.x1,d.y1); ctx.lineTo(d.x2,d.y2); ctx.stroke();
+    });
 
-    // --- [오브젝트 동기화] ---
-    window.createObj = (type, name) => push(objRef, {t:type, n:name, x:-camX+100, y:-camY+100, txt:"", v1:0, v2:0});
+    // --- [6. 오브젝트 동기화] ---
     onChildAdded(objRef, s => {
         const id = s.key, d = s.val(), el = document.createElement('div');
         el.className = 'obj'; el.id = `obj-${id}`; el.style.left = d.x+'px'; el.style.top = d.y+'px';
-        
         const render = (data) => {
-            if(data.t==='poll') el.innerHTML = `<div class="obj-head">🗳️ 투표 <span onclick="window.delObj('${id}')">×</span></div><input style="width:100%" placeholder="주제" value="${data.txt}" onchange="window.upObj('${id}',{txt:this.value})"><br><button onclick="window.vote('${id}',1)">찬성 ${data.v1||0}</button><button onclick="window.vote('${id}',2)">반대 ${data.v2||0}</button>`;
-            else if(data.t==='rsp') el.innerHTML = `<div class="obj-head">✌️ 가위바위보 <span onclick="window.delObj('${id}')">×</span></div><button onclick="window.game('${myNick}: ✊')">✊</button><button onclick="window.game('${myNick}: ✌️')">✌️</button><button onclick="window.game('${myNick}: 🖐️')">🖐️</button>`;
-            else if(data.t==='dice') el.innerHTML = `<div class="obj-head">🎲 주사위 <span onclick="window.delObj('${id}')">×</span></div><button onclick="window.game('${myNick}: 🎲 ${Math.floor(Math.random()*6)+1}')">굴리기</button>`;
-            else el.innerHTML = `<div class="obj-head">${data.n} <span onclick="window.delObj('${id}')">×</span></div><textarea oninput="window.upObj('${id}',{txt:this.value})">${data.txt||''}</textarea>`;
+            let inner = `<div class="obj-head">${data.n} <span onclick="window.delObj('${id}')">×</span></div>`;
+            if(data.t==='poll') inner += `<input style="width:100%" placeholder="주제" value="${data.txt}" onchange="window.upObj('${id}',{txt:this.value})"><br><button onclick="window.vote('${id}',1)">찬성 ${data.v1||0}</button><button onclick="window.vote('${id}',2)">반대 ${data.v2||0}</button>`;
+            else if(data.t==='img') inner += `<img src="${data.src}">`;
+            else if(data.t==='rsp') inner += `<button onclick="window.game('${myNick}: ✊')">✊</button><button onclick="window.game('${myNick}: ✌️')">✌️</button><button onclick="window.game('${myNick}: 🖐️')">🖐️</button>`;
+            else inner += `<textarea oninput="window.upObj('${id}',{txt:this.value})">${data.txt||''}</textarea>`;
+            el.innerHTML = inner;
         };
         render(d); bd.appendChild(el);
         onValue(ref(db, `o/${id}`), sn => { if(sn.val()) render(sn.val()); });
-
         el.onmousedown = e => {
             if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.tagName==='BUTTON') return;
             let ox=e.clientX-el.offsetLeft, oy=e.clientY-el.offsetTop;
@@ -157,8 +174,8 @@
     });
     onChildRemoved(objRef, s => document.getElementById(`obj-${s.key}`)?.remove());
 
-    // --- [채팅 & 부가기능] ---
-    window.upObj = (id, data) => update(ref(db, `o/${id}`), data);
+    // --- [기타 유틸] ---
+    window.upObj = (id, d) => update(ref(db, `o/${id}`), d);
     window.delObj = id => remove(ref(db, `o/${id}`));
     window.vote = (id, n) => onValue(ref(db,`o/${id}`), s=>{ let d=s.val(); if(n===1) update(ref(db,`o/${id}`),{v1:(d.v1||0)+1}); else update(ref(db,`o/${id}`),{v2:(d.v2||0)+1}); },{onlyOnce:true});
     window.game = m => push(chatRef, {u:"게임", m:m});
@@ -168,13 +185,6 @@
         div.innerHTML=`<b>${d.u}</b>${d.m}`; document.getElementById('chat-msgs').appendChild(div);
         document.getElementById('chat-msgs').scrollTop=9999;
     });
-    window.filterTools = () => {
-        let v = document.getElementById('tool-search').value.toLowerCase();
-        document.querySelectorAll('#tool-grid button').forEach(b => b.style.display = b.innerText.toLowerCase().includes(v) ? 'block' : 'none');
-    };
-    window.adminReset = () => { if(prompt("비번")==='6974') remove(ref(db)).then(()=>location.reload()); };
-    function toggleGrid() { bd.style.backgroundImage = bd.style.backgroundImage==='none' ? 'radial-gradient(#1e293b 1px, transparent 1px)' : 'none'; }
-    function saveMap() { let a=document.createElement('a'); a.href=cv.toDataURL(); a.download='station.png'; a.click(); }
 </script>
 </body>
 </html>
