@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>STATION v7 - 20가지 기능 아지트</title>
+    <meta charset="UTF-8">
+    <style>
+        :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --border: #334155; }
+        body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* 왼쪽 사이드바 (기능 20개 배치) */
+        #sidebar { width: 320px; background: var(--panel); border-right: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 10px; z-index: 100; overflow-y: auto; }
+        .tool-group { background: rgba(15, 23, 42, 0.5); border-radius: 8px; padding: 10px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+        .tool-group strong { font-size: 12px; color: var(--accent); text-transform: uppercase; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        
+        button { padding: 8px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; background: #334155; color: white; font-size: 11px; transition: 0.2s; }
+        button:hover { background: #475569; }
+        button.active { background: var(--accent); color: #000; }
+        
+        /* 메인 영역 */
+        #viewport { flex-grow: 1; position: relative; overflow: hidden; background: #0f172a; cursor: crosshair; }
+        #board { position: absolute; top: 0; left: 0; width: 5000px; height: 5000px; transform-origin: 0 0; }
+        #canvas { position: absolute; top: 0; left: 0; z-index: 1; }
+
+        /* 오브젝트들 */
+        .obj { position: absolute; padding: 10px; border-radius: 8px; box-shadow: 0 10px 20px rgba(0,0,0,0.4); cursor: move; z-index: 10; background: #fef08a; color: #1c1917; min-width: 100px; }
+        .code-box { background: #1e1e1e !important; color: #d4d4d4 !important; width: 350px; border: 1px solid #555; }
+        .code-box textarea { width: 100%; height: 120px; background: #1e1e1e; color: #9cdcfe; border: none; font-family: monospace; }
+        .poll-box { background: #ffffff !important; min-width: 200px; }
+
+        /* 오른쪽 채팅방 */
+        #chat-panel { width: 300px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; }
+        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
+        .msg { background: #334155; padding: 6px 10px; border-radius: 10px; align-self: flex-start; max-width: 90%; word-break: break-all; }
+        .msg.img-msg { background: none; padding: 0; }
+        .msg img { max-width: 100%; border-radius: 5px; display: block; }
+        #chat-input-area { padding: 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2 style="color:var(--accent); margin:0; font-size: 1.2rem; text-align: center;">STATION v7 (20 TOOLS)</h2>
+    
+    <div class="tool-group">
+        <strong>🖌️ Drawing & Edit</strong>
+        <div class="grid-2">
+            <button onclick="setTool('pen')" id="btn-pen" class="active">1. ✏️ 펜</button>
+            <button onclick="setTool('eraser')" id="btn-eraser">2. 🧹 지우개</button>
+            <button onclick="setTool('move')" id="btn-move">3. 🖱️ 이동</button>
+            <button onclick="undo()">4. ↩️ 되돌리기</button>
+        </div>
+        <div style="display:flex; gap:5px; align-items:center;">
+            <input type="color" id="colorPicker" value="#38bdf8" style="flex:1; height:25px;">
+            <input type="range" id="sizePicker" min="1" max="50" value="3" style="flex:1;">
+        </div>
+    </div>
+
+    <div class="tool-group">
+        <strong>📝 Collaboration</strong>
+        <div class="grid-2">
+            <button onclick="createObj('note')">5. 📋 포스트잇</button>
+            <button onclick="createObj('code')">6. 💻 코드박스</button>
+            <button onclick="createObj('table')">7. 📊 실시간 표</button>
+            <button onclick="createObj('todo')">8. ✅ 할일목록</button>
+            <button onclick="createObj('link')">9. 🔗 링크공유</button>
+        </div>
+    </div>
+
+    <div class="tool-group">
+        <strong>🎮 Utility & Game</strong>
+        <div id="shiritori-val" style="font-size:11px; color:var(--accent); font-weight:bold;">끝말잇기 대기 중...</div>
+        <input type="text" id="wordInput" placeholder="10. 끝말잇기 입력" style="width:90%; padding:5px;" onkeypress="if(event.keyCode==13) runShiritori()">
+        <div class="grid-2">
+            <button onclick="createObj('dice')">11. 🎲 주사위</button>
+            <button onclick="createObj('timer')">12. ⏳ 타이머</button>
+            <button onclick="createObj('poll')">13. 🗳️ 투표</button>
+            <button onclick="createObj('notice')">14. 📢 공지사항</button>
+            <button onclick="saveCanvas()">15. 💾 보드 저장</button>
+        </div>
+    </div>
+
+    <div class="tool-group">
+        <strong>⚙️ Media & System</strong>
+        <div class="grid-2">
+            <button onclick="document.getElementById('chatFile').click()" style="background:#059669">16. 📁 파일 업로드</button>
+            <button onclick="alert('현재 접속자: '+userCount)">17. 👥 접속자수</button>
+            <button onclick="createObj('youtube')">18. 📺 유튜브(링크)</button>
+            <button onclick="toggleGrid()">19. 🏁 격자 켜기</button>
+            <button onclick="resetAll()" style="background:#ef4444">20. 💣 전체초기화</button>
+        </div>
+        <input type="file" id="chatFile" accept="image/*" style="display:none" onchange="handleFile(this.files)">
+    </div>
+</div>
+
+<div id="viewport"><div id="board"><canvas id="canvas"></canvas></div></div>
+
+<div id="chat-panel">
+    <div style="padding:10px; border-bottom:1px solid var(--border); font-size:13px; font-weight:bold;">💬 아지트 채팅</div>
+    <div id="chat-messages"></div>
+    <div id="chat-input-area">
+        <input type="text" id="chatInput" placeholder="메시지 입력..." onkeypress="if(event.keyCode==13) sendChat()">
+        <button onclick="sendChat()" style="background:var(--accent); color:#000;">보내기</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded, set, remove, onValue, update, onChildRemoved } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAA8DZ5jJITzGWRPK9YtpSkp8X-i38ZzcE",
+        authDomain: "memo-15f70.firebaseapp.com",
+        projectId: "memo-15f70",
+        databaseURL: "https://memo-15f70-default-rtdb.firebaseio.com/",
+        appId: "1:159916629790:web:738e7bdfef3a7b7c1d330f"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const drawRef = ref(db, 'drawing');
+    const objRef = ref(db, 'objects');
+    const chatRef = ref(db, 'chats');
+    const wordRef = ref(db, 'gameWord');
+
+    const board = document.getElementById('board');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 5000; canvas.height = 5000;
+
+    let posX = 0, posY = 0, isDrawing = false, currentTool = 'pen';
+    let lastX = 0, lastY = 0, myHistory = [], userCount = 1;
+
+    // --- 1-4. 그리기 & 취소 ---
+    window.setTool = (t) => { currentTool = t; document.querySelectorAll('button').forEach(b=>b.classList.remove('active')); if(document.getElementById('btn-'+t)) document.getElementById('btn-'+t).classList.add('active'); };
+    canvas.onmousedown = (e) => { if(currentTool!=='move') { isDrawing=true; [lastX,lastY]=[e.offsetX,e.offsetY]; } };
+    canvas.onmousemove = (e) => {
+        if(!isDrawing || currentTool==='move') return;
+        const color = currentTool==='eraser' ? '#0f172a' : document.getElementById('colorPicker').value;
+        const size = document.getElementById('sizePicker').value;
+        const line = push(drawRef, { x1:lastX, y1:lastY, x2:e.offsetX, y2:e.offsetY, color, size });
+        myHistory.push(line.key);
+        draw(lastX, lastY, e.offsetX, e.offsetY, color, size);
+        [lastX,lastY] = [e.offsetX,e.offsetY];
+    };
+    canvas.onmouseup = () => isDrawing=false;
+    function draw(x1,y1,x2,y2,c,s) { ctx.strokeStyle=c; ctx.lineWidth=s; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+    onChildAdded(drawRef, (s) => { const d=s.val(); draw(d.x1,d.y1,d.x2,d.y2,d.color,d.size); });
+    onChildRemoved(drawRef, () => { ctx.clearRect(0,0,5000,5000); onValue(drawRef, snap => snap.forEach(s => { const d=s.val(); draw(d.x1,d.y1,d.x2,d.y2,d.color,d.size); }), {onlyOnce:true}); });
+    window.undo = () => { const id=myHistory.pop(); if(id) remove(ref(db, `drawing/${id}`)); };
+
+    // --- 5-14. 오브젝트 생성 ---
+    window.createObj = (type) => {
+        let content = '';
+        if(type==='table') content='헤더1|헤더2\n---|---\n값1|값2';
+        if(type==='todo') content='- [ ] 할 일';
+        if(type==='link') content='https://google.com';
+        push(objRef, { type, x:-posX+100, y:-posY+100, content });
+    };
+
+    onChildAdded(objRef, (snap) => {
+        const d=snap.val(), id=snap.key;
+        const el=document.createElement('div'); el.className=`obj ${d.type==='code'?'code-box':''}`;
+        el.style.left=d.x+'px'; el.style.top=d.y+'px';
+        
+        if(d.type==='img') el.innerHTML = `<img src="${d.content}">`;
+        else if(d.type==='dice') el.innerHTML = `<button onclick="this.innerText='🎲 '+(Math.floor(Math.random()*6)+1)" style="font-size:20px;">🎲 주사위</button>`;
+        else if(d.type==='timer') el.innerHTML = `⏳ <span id="t-${id}">00:00</span> <button onclick="startT('${id}')">시작</button>`;
+        else if(d.type==='poll') el.innerHTML = `🗳️ 투표: <input onchange="updateObj('${id}',this.value)" value="${d.content}"> <button onclick="alert('투표완료!')">찬성</button> <button>반대</button>`;
+        else el.innerHTML = `<textarea onchange="update(ref(db,'objects/${id}'),{content:this.value})">${d.content}</textarea>`;
+        
+        board.appendChild(el);
+        makeDraggable(el, id);
+    });
+
+    function makeDraggable(el, id) {
+        el.onmousedown = (e) => {
+            if(e.target.tagName==='TEXTAREA' || e.target.tagName==='BUTTON' || e.target.tagName==='INPUT') return;
+            let ox=e.clientX-el.offsetLeft, oy=e.clientY-el.offsetTop;
+            document.onmousemove=(m)=>{
+                let nx=m.clientX-ox, ny=m.clientY-oy; el.style.left=nx+'px'; el.style.top=ny+'px';
+                update(ref(db,`objects/${id}`), {x:nx, y:ny});
+            };
+            document.onmouseup=()=>document.onmousemove=null;
+        };
+    }
+
+    // --- 10. 끝말잇기 ---
+    onValue(wordRef, s => { document.getElementById('shiritori-val').innerText = "현재: " + (s.val()||"없음"); });
+    window.runShiritori = () => {
+        const input = document.getElementById('wordInput');
+        const next = input.value.trim();
+        onValue(wordRef, s => {
+            let last = s.val() || "";
+            if(last && last.slice(-1) !== next.charAt(0)) { alert("땡!"); return; }
+            set(wordRef, next); input.value="";
+        }, {onlyOnce:true});
+    };
+
+    // --- 15-20. 기타 기능 ---
+    window.saveCanvas = () => { const link = document.createElement('a'); link.download = 'board.png'; link.href = canvas.toDataURL(); link.click(); };
+    window.toggleGrid = () => { board.style.backgroundImage = board.style.backgroundImage ? '' : 'linear-gradient(#2d3748 1px, transparent 1px), linear-gradient(90deg, #2d3748 1px, transparent 1px)'; board.style.backgroundSize = '50px 50px'; };
+    window.sendChat = () => { const input = document.getElementById('chatInput'); if(!input.value.trim()) return; push(chatRef, {type:'text', msg:input.value}); input.value=""; };
+    window.handleFile = (f) => { const r=new FileReader(); r.onload=e=>push(chatRef, {type:'img', msg:e.target.result}); r.readAsDataURL(f[0]); };
+
+    onChildAdded(chatRef, s => {
+        const d=s.val(); const div=document.createElement('div'); div.className='msg';
+        if(d.type==='text') div.innerText = d.msg;
+        else { div.className+=' img-msg'; div.innerHTML = `<img src="${d.msg}">`; }
+        const c=document.getElementById('chat-messages'); c.appendChild(div); c.scrollTop=c.scrollHeight;
+    });
+
+    // 화면 이동
+    viewport.oncontextmenu = e => e.preventDefault();
+    viewport.onmousedown = e => { if(e.button===2 || currentTool==='move') { let sX=e.clientX-posX, sY=e.clientY-posY; document.onmousemove=m=>{ posX=m.clientX-sX; posY=m.clientY-sY; board.style.transform=`translate(${posX}px,${posY}px)`; }; } };
+    window.addEventListener('mouseup', ()=>document.onmousemove=null);
+    window.addEventListener('keydown', e => { if(e.ctrlKey && e.key==='z') undo(); if(e.ctrlKey && e.key==='v') navigator.clipboard.read().then(items => { for(let item of items) if(item.types.includes('image/png')) item.getType('image/png').then(blob => handleFile([blob])); }); });
+    window.resetAll = () => { if(confirm("초기화?")) { remove(ref(db)); location.reload(); } };
+</script>
+</body>
+</html>
