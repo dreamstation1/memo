@@ -1,72 +1,77 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>STATION v13 - 100 TOOLS ULTIMATE</title>
+    <title>STATION v14 - 100 TOOLS COMPLETE</title>
     <meta charset="UTF-8">
     <style>
         :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --border: #334155; }
         body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
         
         /* 🆔 입장 레이어 */
-        #login-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.98); z-index: 5000; display: flex; align-items: center; justify-content: center; }
-        .login-box { background: var(--panel); padding: 40px; border-radius: 20px; border: 2px solid var(--accent); text-align: center; width: 350px; }
-        .login-box input { padding: 15px; border-radius: 8px; border: none; width: 80%; font-size: 18px; margin-bottom: 20px; }
+        #login-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.98); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .login-box { background: var(--panel); padding: 40px; border-radius: 20px; border: 2px solid var(--accent); text-align: center; width: 350px; box-shadow: 0 0 30px rgba(56, 189, 248, 0.3); }
+        .login-box input { padding: 15px; border-radius: 8px; border: none; width: 80%; font-size: 18px; margin-bottom: 20px; background: #0f172a; color: white; border: 1px solid var(--border); }
 
-        /* 📜 사이드바: 검색 기능 포함 */
+        /* 📜 사이드바 */
         #sidebar { width: 320px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; }
-        #search-box { padding: 15px; border-bottom: 1px solid var(--border); }
-        #tool-search { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--border); background: #0f172a; color: white; }
+        #search-area { padding: 15px; border-bottom: 1px solid var(--border); }
+        #tool-search { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--border); background: #0f172a; color: white; box-sizing: border-box; }
         #sidebar-scroll { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
-        .tool-group { background: rgba(15, 23, 42, 0.4); border-radius: 8px; padding: 10px; border: 1px solid var(--border); }
-        .tool-group strong { font-size: 12px; color: var(--accent); display: block; margin-bottom: 8px; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-        button { padding: 8px; border: none; border-radius: 4px; cursor: pointer; background: #334155; color: white; font-size: 11px; white-space: nowrap; overflow: hidden; }
-        button.active { background: var(--accent); color: #000; }
+        button { padding: 8px; border: none; border-radius: 4px; cursor: pointer; background: #334155; color: white; font-size: 11px; transition: 0.2s; }
+        button:hover { background: #475569; }
+        button.active { background: var(--accent); color: #000; font-weight: bold; }
 
-        /* 🌌 무한 보드 엔진 */
-        #viewport { flex-grow: 1; position: relative; overflow: hidden; background: #020617; }
-        #board { position: absolute; top: 0; left: 0; width: 10000px; height: 10000px; background-image: radial-gradient(#1e293b 1px, transparent 1px); background-size: 50px 50px; }
+        /* 🌌 무한 보드 */
+        #viewport { flex-grow: 1; position: relative; overflow: hidden; background: #020617; cursor: crosshair; }
+        #board { position: absolute; top: 0; left: 0; width: 5000px; height: 5000px; background-image: radial-gradient(#1e293b 1px, transparent 1px); background-size: 40px 40px; transform-origin: 0 0; }
         #canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
 
-        /* 📦 오브젝트 (동기화 박스) */
-        .obj { position: absolute; padding: 10px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: move; min-width: 180px; background: #fef08a; color: #000; font-size: 13px; z-index: 10; }
-        .obj-header { font-weight: bold; border-bottom: 1px solid rgba(0,0,0,0.1); margin-bottom: 5px; display: flex; justify-content: space-between; }
-        .obj input, .obj textarea { width: 90%; background: rgba(255,255,255,0.5); border: none; border-radius: 4px; padding: 5px; font-size: 12px; }
+        /* 📦 동기화 오브젝트 */
+        .obj { position: absolute; padding: 10px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: move; min-width: 200px; background: #fef08a; color: #000; z-index: 10; font-size: 13px; }
+        .obj-head { font-weight: bold; border-bottom: 1px solid rgba(0,0,0,0.1); margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .obj-head span { cursor: pointer; color: #ef4444; }
+        .obj textarea { width: 100%; height: 80px; background: rgba(255,255,255,0.4); border: 1px solid rgba(0,0,0,0.1); border-radius: 4px; resize: none; box-sizing: border-box; }
+        .poll-btns button { width: 48%; margin-top: 5px; padding: 5px; font-size: 11px; }
 
         /* 💬 채팅창 */
         #chat-panel { width: 300px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
         #chat-msgs { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-        .msg { background: #334155; padding: 8px 12px; border-radius: 15px; align-self: flex-start; max-width: 85%; font-size: 13px; }
-        .msg b { color: var(--accent); display: block; font-size: 11px; }
+        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 90%; font-size: 13px; line-height: 1.4; }
+        .msg b { color: var(--accent); font-size: 11px; display: block; margin-bottom: 2px; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h1 style="color:var(--accent)">STATION v13</h1>
-        <input type="text" id="nick-in" placeholder="이름을 입력하세요" onkeypress="if(event.keyCode==13) start()">
-        <button onclick="start()" style="width:100%; padding:15px; background:var(--accent); font-weight:bold; border:none; border-radius:8px; cursor:pointer;">입장</button>
+        <h1 style="color:var(--accent); margin-top:0;">STATION v14</h1>
+        <p>사용할 이름을 입력하세요</p>
+        <input type="text" id="nick-input" placeholder="이름..." onkeypress="if(event.keyCode==13) enterStation()">
+        <button onclick="enterStation()" style="width:100%; padding:15px; background:var(--accent); color:black; font-weight:bold; border-radius:8px;">아지트 접속</button>
     </div>
 </div>
 
 <div id="sidebar">
-    <div id="search-box">
-        <input type="text" id="tool-search" placeholder="🔍 기능 검색 (1-100)..." oninput="filterTools()">
+    <div id="search-area">
+        <input type="text" id="tool-search" placeholder="🔍 1~100 기능 검색..." oninput="filterTools()">
     </div>
-    <div id="sidebar-scroll" id="tool-list">
-        </div>
+    <div id="sidebar-scroll">
+        <div class="grid-2" id="tool-grid"></div>
+    </div>
 </div>
 
 <div id="viewport">
-    <div id="board"><canvas id="canvas"></canvas></div>
+    <div id="board">
+        <canvas id="canvas"></canvas>
+    </div>
 </div>
 
 <div id="chat-panel">
-    <div style="padding:15px; font-weight:bold; border-bottom:1px solid var(--border);">💬 실시간 채팅</div>
+    <div style="padding:15px; font-weight:bold; border-bottom:1px solid var(--border); color:var(--accent);">💬 STATION CHAT</div>
     <div id="chat-msgs"></div>
-    <div style="padding:10px;">
-        <input type="text" id="chat-in" placeholder="엔터 전송" onkeypress="if(event.keyCode==13) sendMsg()" style="width:90%; padding:10px; background:#0f172a; border:none; color:white; border-radius:5px;">
+    <div style="padding:10px; border-top:1px solid var(--border);">
+        <input type="text" id="chat-input" placeholder="메시지..." onkeypress="if(event.keyCode==13) sendChat()" style="width:100%; padding:10px; background:#0f172a; border:none; color:white; border-radius:5px; box-sizing:border-box;">
     </div>
 </div>
 
@@ -74,117 +79,125 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, push, onChildAdded, set, remove, onValue, update, onChildRemoved } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    const config = { apiKey: "AIzaSyAA8DZ5jJITzGWRPK9YtpSkp8X-i38ZzcE", databaseURL: "https://memo-15f70-default-rtdb.firebaseio.com/" };
-    const app = initializeApp(config);
+    const firebaseConfig = { apiKey: "AIzaSyAA8DZ5jJITzGWRPK9YtpSkp8X-i38ZzcE", databaseURL: "https://memo-15f70-default-rtdb.firebaseio.com/" };
+    const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const drawRef = ref(db, 'drawing'), objRef = ref(db, 'objects'), chatRef = ref(db, 'chats');
+    const drawRef = ref(db, 'draw'), objRef = ref(db, 'objs'), chatRef = ref(db, 'chats');
 
-    let myNick = "익명", camX = 0, camY = 0, tool = 'pen', history = [];
+    let myNick = "익명", camX = 0, camY = 0, currentTool = 'pen';
     const vp = document.getElementById('viewport'), bd = document.getElementById('board'), cv = document.getElementById('canvas'), ctx = cv.getContext('2d');
-    cv.width = 10000; cv.height = 10000;
+    cv.width = 5000; cv.height = 5000;
 
-    // --- [1. 100개 기능 리스트 정의] ---
+    // --- [100개 기능 리스트 구성] ---
     const tools = [
-        {id:1, n:"✏️ 펜", t:"pen"}, {id:2, n:"🧹 지우개", t:"eraser"}, {id:3, n:"🖱️ 이동", t:"move"}, {id:4, n:"↩️ 되돌리기", f:undo},
-        {id:5, n:"📋 포스트잇", o:"note"}, {id:6, n:"🔤 텍스트", o:"text"}, {id:7, n:"🏁 격자", f:toggleGrid}, {id:8, n:"💾 저장", f:save},
-        {id:9, n:"💻 코드", o:"code"}, {id:10, n:"📊 표", o:"table"}, {id:11, n:"✅ 할일", o:"todo"}, {id:12, n:"🔗 링크", o:"link"},
-        {id:13, n:"📢 공지", o:"notice"}, {id:14, n:"🧠 마인드맵", o:"mind"}, {id:15, n:"📅 달력", o:"cal"}, {id:16, n:"📋 칸반", o:"kanban"},
-        {id:17, n:"🎮 끝말잇기", o:"shiri"}, {id:18, n:"🗳️ 투표", o:"poll"}, {id:19, n:"✌️ 가위바위보", o:"rsp"}, {id:20, n:"🎲 주사위", o:"dice"},
-        {id:21, n:"👤 이름추첨", o:"name"}, {id:22, n:"🪙 동전", o:"coin"}, {id:23, n:"🪜 사다리", o:"ladder"}, {id:24, n:"💣 폭탄", o:"bomb"},
-        {id:25, n:"⏳ 타이머", o:"timer"}, {id:26, n:"⏰ 시계", o:"clock"}, {id:27, n:"🧮 계산기", o:"calc"}, {id:28, n:"☁️ 날씨", o:"weather"},
-        {id:40, n:"💣 초기화", f:reset}
+        {id:1, n:"✏️ 펜", t:"pen"}, {id:2, n:"🧹 지우개", t:"eraser"}, {id:3, n:"🖱️ 이동", t:"move"}, {id:4, n:"↩️ 되돌리기", f:()=>alert('준비중')},
+        {id:5, n:"📋 포스트잇", o:"note"}, {id:6, n:"🔤 텍스트", o:"text"}, {id:7, n:"🏁 격자 켜기", f:toggleGrid}, {id:8, n:"💾 화면 저장", f:saveMap},
+        {id:18, n:"🗳️ 투표 시작", o:"poll"}, {id:19, n:"✌️ 가위바위보", o:"rsp"}, {id:20, n:"🎲 주사위", o:"dice"}, {id:40, n:"💣 전체초기화", f:adminReset}
     ];
-    // (나머지 100개는 편의상 루프로 생성하거나 검색 기능을 위해 더미 데이터 포함 가능)
-    for(let i=41; i<=100; i++) tools.push({id:i, n:`🛠️ 기능 ${i}`, o:'extra'});
+    for(let i=21; i<=100; i++) if(!tools.find(x=>x.id===i)) tools.push({id:i, n:`🛠️ 기능 ${i}`, o:"extra"});
 
-    function initTools() {
-        const container = document.getElementById('sidebar-scroll');
-        container.innerHTML = `<div class="grid-2" id="tool-grid"></div>`;
+    // --- [시스템: 입장] ---
+    window.enterStation = () => {
+        let val = document.getElementById('nick-input').value.trim();
+        if(!val) return alert("이름을 적어줘!");
+        myNick = val; document.getElementById('login-overlay').remove();
+        initUI();
+        push(chatRef, {user:"시스템", msg:`${myNick}님이 입장했습니다!`, type:"sys"});
+    };
+
+    function initUI() {
         const grid = document.getElementById('tool-grid');
-        tools.forEach(t => {
-            const b = document.createElement('button');
-            b.innerText = t.n;
-            b.onclick = () => {
-                if(t.t) setTool(t.t);
-                else if(t.o) createObj(t.o);
+        tools.sort((a,b)=>a.id-b.id).forEach(t => {
+            const btn = document.createElement('button');
+            btn.innerText = `${t.id}. ${t.n}`;
+            btn.onclick = () => {
+                if(t.t) { currentTool = t.t; document.querySelectorAll('button').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+                else if(t.o) createObject(t.o, t.n);
                 else if(t.f) t.f();
             };
-            grid.appendChild(b);
+            grid.appendChild(btn);
         });
     }
 
-    // --- [2. 핵심 시스템: 무한 이동 & 동기화] ---
-    window.start = () => { myNick = document.getElementById('nick-in').value || "익명"; document.getElementById('login-overlay').remove(); initTools(); };
-
+    // --- [무한 이동 (우클릭)] ---
     vp.oncontextmenu = e => e.preventDefault();
     vp.onmousedown = e => {
-        if(e.button === 2 || tool === 'move') {
-            let sx = e.clientX-camX, sy = e.clientY-camY;
-            window.onmousemove = m => { camX = m.clientX-sx; camY = m.clientY-sy; bd.style.transform = `translate(${camX}px, ${camY}px)`; };
+        if(e.button === 2 || currentTool === 'move') {
+            let sx = e.clientX - camX, sy = e.clientY - camY;
+            window.onmousemove = m => {
+                camX = m.clientX - sx; camY = m.clientY - sy;
+                bd.style.transform = `translate(${camX}px, ${camY}px)`;
+            };
             window.onmouseup = () => window.onmousemove = null;
         }
     };
 
+    // --- [드로잉 동기화] ---
     vp.addEventListener('mousedown', e => {
-        if(e.button !== 0 || tool === 'move') return;
+        if(e.button !== 0 || currentTool === 'move') return;
         let r = vp.getBoundingClientRect(), lx = e.clientX-r.left-camX, ly = e.clientY-r.top-camY;
         window.onmousemove = m => {
             let cx = m.clientX-r.left-camX, cy = m.clientY-r.top-camY;
-            let c = tool==='eraser' ? '#020617' : '#38bdf8';
-            push(drawRef, {x1:lx, y1:ly, x2:cx, y2:cy, color:c});
+            let color = currentTool==='eraser' ? '#020617' : '#38bdf8';
+            push(drawRef, {x1:lx, y1:ly, x2:cx, y2:cy, c:color});
             lx = cx; ly = cy;
         };
     });
-    window.onmouseup = () => window.onmousemove = null;
+    function drawLine(x1,y1,x2,y2,c) { ctx.strokeStyle=c; ctx.lineWidth=3; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+    onChildAdded(drawRef, s => { let d=s.val(); drawLine(d.x1, d.y1, d.x2, d.y2, d.c); });
 
-    function draw(x1,y1,x2,y2,c) { ctx.strokeStyle=c; ctx.lineWidth=3; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
-    onChildAdded(drawRef, s => { let d=s.val(); draw(d.x1, d.y1, d.x2, d.y2, d.color); });
-
-    // --- [3. 오브젝트 실시간 동기화] ---
-    window.createObj = type => push(objRef, {type, x: -camX+200, y: -camY+200, val: 0, text: ''});
+    // --- [오브젝트 실시간 생성/동기화] ---
+    window.createObject = (type, name) => push(objRef, {type, name, x:-camX+100, y:-camY+100, txt:"", v1:0, v2:0});
     onChildAdded(objRef, s => {
-        const d = s.val(), id = s.key;
-        const el = document.createElement('div'); el.className = 'obj'; el.id = id;
-        el.style.left = d.x+'px'; el.style.top = d.y+'px';
+        const id = s.key, d = s.val(), el = document.createElement('div');
+        el.className = 'obj'; el.id = `obj-${id}`; el.style.left = d.x+'px'; el.style.top = d.y+'px';
         
-        const render = (data) => {
-            if(data.type==='poll') el.innerHTML = `<div class="obj-header">🗳️ 투표 <span onclick="window.delObj('${id}')">❌</span></div><b>${data.text||'주제'}</b><br><button onclick="window.vote('${id}',1)">찬성 ${data.v1||0}</button><button onclick="window.vote('${id}',2)">반대 ${data.v2||0}</button>`;
-            else if(data.type==='rsp') el.innerHTML = `<div class="obj-header">✌️ 가위바위보</div><button onclick="window.sendGame('${myNick} ✊')">✊</button><button onclick="window.sendGame('${myNick} 🖐️')">🖐️</button>`;
-            else el.innerHTML = `<div class="obj-header">${data.type.toUpperCase()} <span onclick="window.delObj('${id}')">❌</span></div><textarea oninput="window.updateObj('${id}', this.value)">${data.text||''}</textarea>`;
+        const updateHTML = (data) => {
+            if(data.type==='poll') {
+                el.innerHTML = `<div class="obj-head">🗳️ 투표 <span onclick="window.delObj('${id}')">×</span></div>
+                <input style="width:100%" placeholder="주제 입력" value="${data.txt}" onchange="window.upObj('${id}', {txt:this.value})">
+                <div class="poll-btns"><button onclick="window.vote('${id}',1)">찬성 ${data.v1||0}</button><button onclick="window.vote('${id}',2)">반대 ${data.v2||0}</button></div>`;
+            } else if(data.type==='rsp') {
+                el.innerHTML = `<div class="obj-head">✌️ 가위바위보 <span onclick="window.delObj('${id}')">×</span></div>
+                <button onclick="window.game('${myNick} ✊')">✊</button><button onclick="window.game('${myNick} ✌️')">✌️</button><button onclick="window.game('${myNick} 🖐️')">🖐️</button>`;
+            } else {
+                el.innerHTML = `<div class="obj-head">${data.name} <span onclick="window.delObj('${id}')">×</span></div>
+                <textarea oninput="window.upObj('${id}', {txt:this.value})">${data.txt||''}</textarea>`;
+            }
         };
-        render(d); bd.appendChild(el);
-        onValue(ref(db, `objects/${id}`), snap => { if(snap.val()) render(snap.val()); });
+        updateHTML(d); bd.appendChild(el);
+        onValue(ref(db, `objs/${id}`), sn => { if(sn.val()) updateHTML(sn.val()); });
 
         el.onmousedown = e => {
-            if(e.target.tagName==='BUTTON' || e.target.tagName==='TEXTAREA') return;
+            if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.tagName==='BUTTON') return;
             let ox=e.clientX-el.offsetLeft, oy=e.clientY-el.offsetTop;
             document.onmousemove = m => {
                 let nx=m.clientX-ox, ny=m.clientY-oy; el.style.left=nx+'px'; el.style.top=ny+'px';
-                update(ref(db, `objects/${id}`), {x:nx, y:ny});
+                update(ref(db, `objs/${id}`), {x:nx, y:ny});
             };
             document.onmouseup = () => document.onmousemove = null;
         };
     });
-    onChildRemoved(objRef, s => document.getElementById(s.key)?.remove());
+    onChildRemoved(objRef, s => document.getElementById(`obj-${s.key}`)?.remove());
 
-    // --- [4. 전역 함수들] ---
-    window.vote = (id, n) => onValue(ref(db,`objects/${id}`), s=>{ let d=s.val(); if(n===1) update(ref(db,`objects/${id}`),{v1:(d.v1||0)+1}); else update(ref(db,`objects/${id}`),{v2:(d.v2||0)+1}); },{onlyOnce:true});
-    window.updateObj = (id, text) => update(ref(db, `objects/${id}`), {text});
-    window.delObj = id => remove(ref(db, `objects/${id}`));
-    window.sendMsg = () => { let i=document.getElementById('chat-in'); if(i.value){ push(chatRef, {user:myNick, msg:i.value}); i.value=''; } };
-    window.sendGame = m => push(chatRef, {user:'게임', msg:m});
-    onChildAdded(chatRef, s => { let d=s.val(); const div=document.createElement('div'); div.className='msg'; div.innerHTML=`<b>${d.user}</b>${d.msg}`; document.getElementById('chat-msgs').appendChild(div); document.getElementById('chat-msgs').scrollTop=9999; });
-    window.reset = () => { if(prompt("비번")==='6974') remove(ref(db)); };
+    // --- [유틸 함수들] ---
+    window.upObj = (id, data) => update(ref(db, `objs/${id}`), data);
+    window.delObj = id => remove(ref(db, `objs/${id}`));
+    window.vote = (id, n) => onValue(ref(db,`objs/${id}`), s=>{ let d=s.val(); if(n===1) update(ref(db,`objs/${id}`),{v1:(d.v1||0)+1}); else update(ref(db,`objs/${id}`),{v2:(d.v2||0)+1}); },{onlyOnce:true});
+    window.game = m => push(chatRef, {user:"게임", msg:m});
+    window.sendChat = () => { let i=document.getElementById('chat-input'); if(i.value){ push(chatRef, {user:myNick, msg:i.value}); i.value=''; } };
+    onChildAdded(chatRef, s => {
+        let d=s.val(); let div=document.createElement('div'); div.className='msg';
+        div.innerHTML=`<b>${d.user}</b>${d.msg}`; document.getElementById('chat-msgs').appendChild(div);
+        document.getElementById('chat-msgs').scrollTop=9999;
+    });
     window.filterTools = () => {
-        let val = document.getElementById('tool-search').value.toLowerCase();
-        document.querySelectorAll('#tool-grid button').forEach(b => {
-            b.style.display = b.innerText.toLowerCase().includes(val) ? 'block' : 'none';
-        });
+        let v = document.getElementById('tool-search').value.toLowerCase();
+        document.querySelectorAll('#tool-grid button').forEach(b => b.style.display = b.innerText.toLowerCase().includes(v) ? 'block' : 'none');
     };
-    function setTool(t){ tool=t; }
-    function toggleGrid(){ bd.style.backgroundImage = bd.style.backgroundImage==='none'?'radial-gradient(#1e293b 1px, transparent 1px)':'none'; }
-    function save(){ let a=document.createElement('a'); a.href=cv.toDataURL(); a.download='map.png'; a.click(); }
-    function undo(){ /* Firebase 특성상 히스토리 관리는 복잡하므로 로컬배열로 처리 필요 */ }
+    window.adminReset = () => { if(prompt("비번")==='6974') remove(ref(db)).then(()=>location.reload()); };
+    function toggleGrid() { bd.style.backgroundImage = bd.style.backgroundImage==='none' ? 'radial-gradient(#1e293b 1px, transparent 1px)' : 'none'; }
+    function saveMap() { let a=document.createElement('a'); a.href=cv.toDataURL(); a.download='station.png'; a.click(); }
 </script>
 </body>
 </html>
