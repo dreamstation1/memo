@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <title>STATION v12 — 실동작 보드</title>
+    <title>교대게이방</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -191,6 +191,13 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    const drawRef = ref(db, 'drawing');
+    const objRef = ref(db, 'objects');
+    const chatRef = ref(db, 'chats');
+    const shiriRef = ref(db, 'shiri');
+    const presenceRoot = ref(db, 'presence');
+    const metaEpochRef = ref(db, 'meta/sessionEpoch');
+
     let sessionEpochSeen = null;
     let metaEpochReady = false;
     /** 전체 초기화 실행 중에는 본인 클라이언트가 epoch만 보고 먼저 리로드되지 않도록 */
@@ -214,13 +221,6 @@
             location.reload();
         }
     });
-
-    const drawRef = ref(db, 'drawing');
-    const objRef = ref(db, 'objects');
-    const chatRef = ref(db, 'chats');
-    const shiriRef = ref(db, 'shiri');
-    const presenceRoot = ref(db, 'presence');
-    const metaEpochRef = ref(db, 'meta/sessionEpoch');
 
     const RESET_PASSWORD = '6974';
     const RESET_PATHS = ['drawing', 'objects', 'chats', 'shiri', 'presence'];
