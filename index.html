@@ -54,6 +54,17 @@
         .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; cursor: pointer; }
         #chat-input-area { padding: 12px; border-top: 1px solid var(--border); }
         #presence-badge { font-size: 11px; color: var(--accent); text-align: center; padding: 4px; }
+
+        #trash-bin {
+            position: fixed; z-index: 500; right: 312px; bottom: 20px; width: 56px; height: 56px;
+            border-radius: 14px; background: var(--panel); border: 2px dashed var(--border);
+            display: flex; align-items: center; justify-content: center; font-size: 26px;
+            pointer-events: none; opacity: 0.85; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+            user-select: none;
+        }
+        #trash-bin.trash-hover { border-color: #ef4444; transform: scale(1.08); box-shadow: 0 0 0 3px rgba(239,68,68,0.35); opacity: 1; }
+        .obj.obj-dragging { opacity: 0.92; z-index: 200; cursor: grabbing; }
+        #lineWidthLabel { font-size: 10px; color: var(--accent); margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -72,18 +83,23 @@
         <h2 style="color:var(--accent); text-align:center; margin:0;">STATION v12</h2>
         <div id="presence-badge">접속: —</div>
         <div class="tool-group">
-            <strong>🖌️ Drawing (1-8)</strong>
+            <strong>🖌️ 그리기 · 오브젝트는 보드 아래 🗑️에 놓으면 삭제</strong>
             <div class="grid-2">
-                <button type="button" onclick="setTool('pen')" id="btn-pen" class="active">1. ✏️ 펜</button>
-                <button type="button" onclick="setTool('eraser')" id="btn-eraser">2. 🧹 지우개</button>
-                <button type="button" onclick="setTool('move')" id="btn-move">3. 🖱️ 이동</button>
-                <button type="button" onclick="undo()">4. ↩️ 되돌리기</button>
-                <button type="button" onclick="createObj('note')">5. 📋 포스트잇</button>
-                <button type="button" onclick="createObj('text')">6. 🔤 텍스트</button>
-                <button type="button" onclick="toggleGrid()">7. 🏁 격자 켜기</button>
-                <button type="button" onclick="saveBoard()">8. 💾 화면 저장</button>
+                <button type="button" onclick="setTool('pen')" id="btn-pen" class="active">✏️ 펜</button>
+                <button type="button" onclick="setTool('brush')" id="btn-brush">🖌️ 붓</button>
+                <button type="button" onclick="setTool('marker')" id="btn-marker">🖍️ 마커</button>
+                <button type="button" onclick="setTool('eraser')" id="btn-eraser">🧹 지우개(부분)</button>
+                <button type="button" onclick="setTool('move')" id="btn-move">🖱️ 이동</button>
+                <button type="button" onclick="undoStroke()">↩️ 한 획 되돌리기</button>
+                <button type="button" onclick="createObj('note')">📋 포스트잇</button>
+                <button type="button" onclick="createObj('text')">🔤 텍스트</button>
+                <button type="button" onclick="toggleGrid()">🏁 격자</button>
+                <button type="button" onclick="saveBoard()">💾 화면 저장</button>
             </div>
-            <input type="color" id="colorPicker" value="#38bdf8" style="width:100%; height:32px; border-radius:6px; border:1px solid var(--border); cursor:pointer;">
+            <label id="lineWidthLabel" for="lineWidth">선 두께: <span id="lineWidthVal">6</span>px</label>
+            <input type="range" id="lineWidth" min="2" max="48" value="6" style="width:100%;">
+            <input type="color" id="colorPicker" value="#38bdf8" style="width:100%; height:32px; border-radius:6px; border:1px solid var(--border); cursor:pointer; margin-top:6px;">
+            <small style="opacity:.85;font-size:10px;">지우개: 캔버스만 지움 · <kbd>Ctrl+Z</kbd> = 방금 그린 한 획 통째로 (입력칸에선 무시)</small>
         </div>
 
         <div class="tool-group">
@@ -147,6 +163,7 @@
 
 <div id="viewport">
     <div id="board"><canvas id="canvas"></canvas></div>
+    <div id="trash-bin" title="오브젝트를 여기로 끌어다 놓으면 삭제">🗑️</div>
 </div>
 
 <div id="chat-panel">
@@ -161,7 +178,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded, set, remove, onValue, update, get, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, push, onChildAdded, onChildRemoved, set, remove, onValue, update, get, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAA8DZ5jJITzGWRPK9YtpSkp8X-i38ZzcE",
@@ -173,18 +190,47 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+
+    let sessionEpochSeen = null;
+    let metaEpochReady = false;
+    /** 전체 초기화 실행 중에는 본인 클라이언트가 epoch만 보고 먼저 리로드되지 않도록 */
+    let suppressEpochReload = false;
+    onValue(metaEpochRef, snap => {
+        const v = snap.val();
+        if (v == null) {
+            metaEpochReady = true;
+            return;
+        }
+        if (!metaEpochReady) {
+            metaEpochReady = true;
+            sessionEpochSeen = v;
+            return;
+        }
+        if (v !== sessionEpochSeen) {
+            if (suppressEpochReload) {
+                sessionEpochSeen = v;
+                return;
+            }
+            location.reload();
+        }
+    });
+
     const drawRef = ref(db, 'drawing');
     const objRef = ref(db, 'objects');
     const chatRef = ref(db, 'chats');
     const shiriRef = ref(db, 'shiri');
     const presenceRoot = ref(db, 'presence');
+    const metaEpochRef = ref(db, 'meta/sessionEpoch');
 
     const RESET_PASSWORD = '6974';
     const RESET_PATHS = ['drawing', 'objects', 'chats', 'shiri', 'presence'];
 
     let userName = "손님";
     let camX = 0, camY = 0, isDrawing = false, currentTool = 'pen';
-    let myHistory = [];
+    /** @type {string[]} 한 번의 마우스 다운~업 사이에 그린 세그먼트 키 */
+    let currentStrokeKeys = [];
+    /** @type {string[][]} 내가 그린 획 단위(되돌리기용) */
+    let myStrokeStack = [];
     let gridVisible = true;
     let presenceRef = null;
 
@@ -194,6 +240,61 @@
     const ctx = canvas.getContext('2d');
     canvas.width = 10000;
     canvas.height = 10000;
+
+    const drawingCache = new Map();
+
+    document.getElementById('lineWidth')?.addEventListener('input', function () {
+        const el = document.getElementById('lineWidthVal');
+        if (el) el.textContent = this.value;
+    });
+
+    function getStrokeWidth() {
+        const el = document.getElementById('lineWidth');
+        return Math.max(2, Math.min(80, parseInt(el?.value, 10) || 6));
+    }
+
+    function effectiveWidthForTool(tool) {
+        const base = getStrokeWidth();
+        if (tool === 'brush') return Math.round(base * 1.75);
+        if (tool === 'marker') return Math.round(base * 1.35);
+        if (tool === 'eraser') return Math.round(base * 1.5);
+        return base;
+    }
+
+    function drawSegment(d) {
+        ctx.save();
+        const isEraser = d.er === 1 || d.er === true;
+        const w = typeof d.w === 'number' && d.w > 0 ? d.w : (isEraser ? 24 : 4);
+        if (isEraser) {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.strokeStyle = 'rgba(0,0,0,1)';
+            ctx.lineWidth = w;
+            ctx.globalAlpha = 1;
+        } else {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.strokeStyle = d.color || '#38bdf8';
+            ctx.globalAlpha = d.tool === 'marker' ? 0.38 : 1;
+            ctx.lineWidth = w;
+        }
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(d.x1, d.y1);
+        ctx.lineTo(d.x2, d.y2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    let redrawScheduled = false;
+    function redrawCanvasFromCache() {
+        if (redrawScheduled) return;
+        redrawScheduled = true;
+        requestAnimationFrame(() => {
+            redrawScheduled = false;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (const d of drawingCache.values()) drawSegment(d);
+        });
+    }
 
     function escapeHtml(s) {
         if (s == null) return '';
@@ -270,38 +371,49 @@
         board.style.backgroundPosition = `${camX}px ${camY}px`;
     }
 
-    // --- 드로잉 ---
+    // --- 드로잉 (펜·붓·마커·부분 지우개 + 획 단위 되돌리기) ---
     viewport.addEventListener('mousedown', e => {
         if (e.button !== 0 || currentTool === 'move') return;
         isDrawing = true;
+        currentStrokeKeys = [];
         const r = viewport.getBoundingClientRect();
         let lx = e.clientX - r.left - camX, ly = e.clientY - r.top - camY;
+        const tool = currentTool;
         const move = m => {
             if (!isDrawing) return;
             const cx = m.clientX - r.left - camX, cy = m.clientY - r.top - camY;
-            const color = currentTool === 'eraser' ? '#0f172a' : document.getElementById('colorPicker').value;
-            const line = push(drawRef, { x1: lx, y1: ly, x2: cx, y2: cy, color });
-            myHistory.push(line.key);
-            draw(lx, ly, cx, cy, color);
+            const w = effectiveWidthForTool(tool);
+            const isEraser = tool === 'eraser';
+            const payload = {
+                x1: lx, y1: ly, x2: cx, y2: cy,
+                color: document.getElementById('colorPicker').value,
+                w,
+                tool: isEraser ? 'eraser' : tool,
+                er: isEraser ? 1 : 0
+            };
+            const line = push(drawRef, payload);
+            currentStrokeKeys.push(line.key);
             lx = cx; ly = cy;
         };
-        const up = () => { isDrawing = false; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        const up = () => {
+            isDrawing = false;
+            window.removeEventListener('mousemove', move);
+            window.removeEventListener('mouseup', up);
+            if (currentStrokeKeys.length) myStrokeStack.push([...currentStrokeKeys]);
+            currentStrokeKeys = [];
+        };
         window.addEventListener('mousemove', move);
         window.addEventListener('mouseup', up);
     });
 
-    function draw(x1, y1, x2, y2, c) {
-        ctx.strokeStyle = c;
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-    }
     onChildAdded(drawRef, s => {
         const d = s.val();
-        draw(d.x1, d.y1, d.x2, d.y2, d.color);
+        drawingCache.set(s.key, d);
+        drawSegment(d);
+    });
+    onChildRemoved(drawRef, s => {
+        drawingCache.delete(s.key);
+        redrawCanvasFromCache();
     });
 
     // --- 채팅 ---
@@ -347,14 +459,35 @@
     function makeDraggable(el, id) {
         el.addEventListener('mousedown', e => {
             if (isInteractiveTarget(e.target)) return;
+            const trash = document.getElementById('trash-bin');
             const ox = e.clientX - el.offsetLeft, oy = e.clientY - el.offsetTop;
+            el.classList.add('obj-dragging');
             const move = m => {
                 const nx = m.clientX - ox, ny = m.clientY - oy;
                 el.style.left = nx + 'px';
                 el.style.top = ny + 'px';
                 patchObj(id, { x: nx, y: ny });
+                if (trash) {
+                    const er = el.getBoundingClientRect();
+                    const tr = trash.getBoundingClientRect();
+                    const cx = (er.left + er.right) / 2, cy = (er.top + er.bottom) / 2;
+                    const over = cx >= tr.left && cx <= tr.right && cy >= tr.top && cy <= tr.bottom;
+                    trash.classList.toggle('trash-hover', over);
+                }
             };
-            const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+            const up = () => {
+                el.classList.remove('obj-dragging');
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+                if (trash) {
+                    const er = el.getBoundingClientRect();
+                    const tr = trash.getBoundingClientRect();
+                    const cx = (er.left + er.right) / 2, cy = (er.top + er.bottom) / 2;
+                    const over = cx >= tr.left && cx <= tr.right && cy >= tr.top && cy <= tr.bottom;
+                    trash.classList.remove('trash-hover');
+                    if (over) remove(ref(db, `objects/${id}`));
+                }
+            };
             document.addEventListener('mousemove', move);
             document.addEventListener('mouseup', up);
         });
@@ -507,16 +640,18 @@
                 <label>초(10~120) <input type="number" data-sec min="10" max="120" value="${Number(d.content) || 30}" style="width:60px;"></label>
                 <div data-disp style="font-size:22px;text-align:center;margin:8px 0;">⏱ ${Number(d.content) || 30}</div>
                 <div class="row"><button type="button" data-start>시작</button><button type="button" data-pass>넘기기</button></div>
-                <small>시작 후 넘기기로 타이머만 초기화됩니다(채팅 알림).</small>`;
+                <small>시작 후 넘기기로 남은 초만 입력값으로 다시 맞춥니다(채팅 알림).</small>`;
             let timer = null;
-            let left = Number(d.content) || 30;
+            let bombTicks = 0;
+            let bombStart = 30;
             const disp = el.querySelector('[data-disp]');
             const secIn = el.querySelector('[data-sec]');
             secIn.addEventListener('change', () => patchObj(id, { content: String(secIn.value) }));
             const tick = () => {
-                left--;
+                bombTicks++;
+                const left = bombStart - bombTicks;
                 disp.textContent = '⏱ ' + Math.max(0, left);
-                if (left <= 0) {
+                if (bombTicks >= bombStart) {
                     clearInterval(timer);
                     timer = null;
                     push(chatRef, { type: 'text', user: '게임', msg: `💣 ${userName}님 폭탄 터짐!` });
@@ -525,17 +660,19 @@
             };
             el.querySelector('[data-start]').addEventListener('click', () => {
                 if (timer) clearInterval(timer);
-                left = Math.min(120, Math.max(10, parseInt(secIn.value, 10) || 30));
-                patchObj(id, { content: String(left) });
-                disp.textContent = '⏱ ' + left;
+                bombStart = Math.min(120, Math.max(10, parseInt(secIn.value, 10) || 30));
+                bombTicks = 0;
+                patchObj(id, { content: String(bombStart) });
+                disp.textContent = '⏱ ' + bombStart;
                 timer = setInterval(tick, 1000);
-                push(chatRef, { type: 'text', user: '게임', msg: `${userName}님이 폭탄 시작 (${left}초)` });
+                push(chatRef, { type: 'text', user: '게임', msg: `${userName}님이 폭탄 시작 (${bombStart}초)` });
             });
             el.querySelector('[data-pass]').addEventListener('click', () => {
                 if (!timer) return alert('먼저 시작하세요.');
-                left = Math.min(120, Math.max(10, parseInt(secIn.value, 10) || 30));
-                disp.textContent = '⏱ ' + left;
-                push(chatRef, { type: 'text', user: '게임', msg: `${userName}님이 폭탄 넘김 → ${left}초로 리셋` });
+                bombStart = Math.min(120, Math.max(10, parseInt(secIn.value, 10) || 30));
+                bombTicks = 0;
+                disp.textContent = '⏱ ' + bombStart;
+                push(chatRef, { type: 'text', user: '게임', msg: `${userName}님이 폭탄 넘김 → ${bombStart}초로 리셋` });
             });
             return;
         }
@@ -1087,16 +1224,27 @@
 
     window.setTool = t => {
         currentTool = t;
-        ['pen', 'eraser', 'move'].forEach(x => {
+        ['pen', 'brush', 'marker', 'eraser', 'move'].forEach(x => {
             const b = document.getElementById('btn-' + x);
             if (b) b.classList.toggle('active', x === t);
         });
     };
 
-    window.undo = () => {
-        const key = myHistory.pop();
-        if (key) remove(ref(db, `drawing/${key}`));
+    window.undoStroke = () => {
+        const keys = myStrokeStack.pop();
+        if (!keys?.length) return;
+        keys.forEach(k => remove(ref(db, `drawing/${k}`)));
     };
+    window.undo = window.undoStroke;
+
+    document.addEventListener('keydown', e => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        if (e.key !== 'z' && e.key !== 'Z') return;
+        const t = e.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+        e.preventDefault();
+        undoStroke();
+    });
 
     window.saveBoard = () => {
         const a = document.createElement('a');
@@ -1111,12 +1259,16 @@
             alert('비밀번호가 올바르지 않습니다.');
             return;
         }
-        if (!confirm('모든 그림·오브젝트·채팅·게임 기록이 삭제됩니다. 계속할까요?')) return;
+        if (!confirm('모든 그림·오브젝트·채팅·게임 기록이 삭제됩니다. 접속 중인 모두 화면이 갱신됩니다. 계속할까요?')) return;
         try {
+            const epoch = Date.now();
+            suppressEpochReload = true;
+            await set(metaEpochRef, epoch);
             await Promise.all(RESET_PATHS.map(p => remove(ref(db, p))));
-            alert('초기화했습니다. 화면을 새로고침합니다.');
+            suppressEpochReload = false;
             location.reload();
         } catch (e) {
+            suppressEpochReload = false;
             alert('초기화 중 오류가 났습니다. 권한을 확인하세요.');
         }
     };
