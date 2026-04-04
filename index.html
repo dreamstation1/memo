@@ -1,43 +1,59 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>STATION v11 - INFINITE & PERSONALIZED</title>
+    <title>STATION v12 — 실동작 보드</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --border: #334155; }
-        body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
-        
-        /* 🆔 입장 레이어 */
-        #login-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-        .login-box { background: var(--panel); padding: 30px; border-radius: 12px; border: 1px solid var(--accent); text-align: center; box-shadow: 0 0 20px var(--accent); }
-        .login-box input { padding: 10px; border-radius: 5px; border: none; margin-bottom: 10px; width: 200px; text-align: center; }
+        :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --border: #334155; --text: #f8fafc; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        body.theme-light { --bg: #e2e8f0; --panel: #f1f5f9; --text: #0f172a; --border: #94a3b8; }
+        body.theme-light .obj { box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        body.theme-light #board { background-color: #cbd5e1; }
 
-        /* 📜 사이드바 (40개 기능 스크롤) */
-        #sidebar { width: 300px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; }
-        #sidebar-scroll { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
-        .tool-group { background: rgba(15, 23, 42, 0.5); border-radius: 8px; padding: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+        #login-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.92); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .login-box { background: var(--panel); padding: 30px; border-radius: 12px; border: 1px solid var(--accent); text-align: center; box-shadow: 0 0 24px rgba(56, 189, 248, 0.25); max-width: 90vw; }
+        .login-box input { padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 10px; width: 220px; text-align: center; background: var(--bg); color: var(--text); }
+
+        #sidebar { width: 300px; min-width: 260px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; }
+        #sidebar-scroll { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 14px; }
+        .tool-group { background: rgba(15, 23, 42, 0.35); border-radius: 10px; padding: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+        body.theme-light .tool-group { background: rgba(255,255,255,0.6); }
         .tool-group strong { font-size: 13px; color: var(--accent); border-left: 3px solid var(--accent); padding-left: 8px; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-        button { padding: 8px; border: none; border-radius: 4px; cursor: pointer; background: #334155; color: white; font-size: 11px; font-weight: bold; transition: 0.2s; }
-        button.active { background: var(--accent); color: #000; }
+        button { padding: 8px; border: none; border-radius: 6px; cursor: pointer; background: #334155; color: white; font-size: 11px; font-weight: 600; transition: background 0.15s, transform 0.1s; }
+        button:hover { filter: brightness(1.08); }
+        button:active { transform: scale(0.98); }
+        button.active { background: var(--accent); color: #0f172a; }
 
-        /* 🌌 무한 캔버스 엔진 */
-        #viewport { flex-grow: 1; position: relative; overflow: hidden; background: #0f172a; }
-        #board { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: radial-gradient(#334155 1px, transparent 1px); background-size: 40px 40px; }
+        #viewport { flex-grow: 1; position: relative; overflow: hidden; background: var(--bg); }
+        #board { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: radial-gradient(#334155 1px, transparent 1px); background-size: 40px 40px; transition: opacity 0.2s; }
+        #board.grid-off { background-image: none; background-color: #0f172a; }
+        body.theme-light #board.grid-off { background-color: #e2e8f0; }
         #canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
 
-        /* 📦 실시간 오브젝트 */
-        .obj { position: absolute; padding: 12px; border-radius: 8px; box-shadow: 0 10px 20px rgba(0,0,0,0.4); cursor: move; z-index: 10; background: #fef08a; color: #1c1917; min-width: 150px; font-size: 13px; }
-        .obj textarea { width: 100%; height: 80px; background: rgba(255,255,255,0.3); border: none; border-radius: 4px; }
-        .poll-box { background: white !important; border: 2px solid var(--accent); }
+        .obj { position: absolute; padding: 10px; border-radius: 10px; box-shadow: 0 12px 28px rgba(0,0,0,0.35); cursor: move; z-index: 10; background: #fef08a; color: #1c1917; min-width: 160px; max-width: 320px; font-size: 12px; }
+        .obj textarea, .obj input[type="text"], .obj input[type="number"], .obj input[type="url"] { width: 100%; box-sizing: border-box; font-size: 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.15); padding: 6px; }
+        .obj textarea { min-height: 72px; resize: vertical; font-family: inherit; }
+        .obj pre, .obj code { font-family: ui-monospace, monospace; font-size: 11px; }
+        .obj-type { font-weight: 700; color: #0f172a; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+        .obj .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+        .obj .row button { flex: 1; min-width: 56px; }
+        .poll-box { background: #fff !important; border: 2px solid var(--accent); }
+        .obj-obj-code { background: #1e1e1e; color: #d4d4d4; }
+        .obj-obj-code .obj-type { color: #9cdcfe; }
+        .obj-obj-code textarea { background: #2d2d2d; color: #d4d4d4; border-color: #444; }
+        .obj-obj-notice { background: #fecaca; border: 2px solid #ef4444; }
+        .obj-obj-link { background: #dbeafe; }
+        .obj-obj-youtube iframe { width: 100%; max-width: 280px; height: 158px; border: none; border-radius: 8px; margin-top: 6px; }
 
-        /* 💬 채팅창 */
-        #chat-panel { width: 300px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; }
+        #chat-panel { width: 300px; min-width: 260px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; }
         #chat-msgs { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
-        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; }
+        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; word-break: break-word; }
         .msg b { color: var(--accent); font-size: 11px; display: block; margin-bottom: 2px; }
         .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; cursor: pointer; }
         #chat-input-area { padding: 12px; border-top: 1px solid var(--border); }
+        #presence-badge { font-size: 11px; color: var(--accent); text-align: center; padding: 4px; }
     </style>
 </head>
 <body>
@@ -45,84 +61,85 @@
 <div id="login-overlay">
     <div class="login-box">
         <h3>아지트 입장 닉네임</h3>
-        <input type="text" id="nickname-input" placeholder="이름을 입력하세요" onkeypress="if(event.keyCode==13) enterStation()">
+        <input type="text" id="nickname-input" placeholder="이름을 입력하세요" autocomplete="username">
         <br>
-        <button onclick="enterStation()" style="width:100%; padding:10px; background:var(--accent); color:black;">입장하기</button>
+        <button type="button" onclick="enterStation()" style="width:100%; padding:10px; background:var(--accent); color:#0f172a;">입장하기</button>
     </div>
 </div>
 
 <div id="sidebar">
     <div id="sidebar-scroll">
-        <h2 style="color:var(--accent); text-align:center;">STATION v11</h2>
+        <h2 style="color:var(--accent); text-align:center; margin:0;">STATION v12</h2>
+        <div id="presence-badge">접속: —</div>
         <div class="tool-group">
             <strong>🖌️ Drawing (1-8)</strong>
             <div class="grid-2">
-                <button onclick="setTool('pen')" id="btn-pen" class="active">1. ✏️ 펜</button>
-                <button onclick="setTool('eraser')" id="btn-eraser">2. 🧹 지우개</button>
-                <button onclick="setTool('move')" id="btn-move">3. 🖱️ 이동</button>
-                <button onclick="undo()">4. ↩️ 되돌리기</button>
-                <button onclick="createObj('note')">5. 📋 포스트잇</button>
-                <button onclick="createObj('text')">6. 🔤 텍스트</button>
-                <button onclick="toggleGrid()">7. 🏁 격자 켜기</button>
-                <button onclick="saveBoard()">8. 💾 화면 저장</button>
+                <button type="button" onclick="setTool('pen')" id="btn-pen" class="active">1. ✏️ 펜</button>
+                <button type="button" onclick="setTool('eraser')" id="btn-eraser">2. 🧹 지우개</button>
+                <button type="button" onclick="setTool('move')" id="btn-move">3. 🖱️ 이동</button>
+                <button type="button" onclick="undo()">4. ↩️ 되돌리기</button>
+                <button type="button" onclick="createObj('note')">5. 📋 포스트잇</button>
+                <button type="button" onclick="createObj('text')">6. 🔤 텍스트</button>
+                <button type="button" onclick="toggleGrid()">7. 🏁 격자 켜기</button>
+                <button type="button" onclick="saveBoard()">8. 💾 화면 저장</button>
             </div>
-            <input type="color" id="colorPicker" value="#38bdf8" style="width:100%;">
+            <input type="color" id="colorPicker" value="#38bdf8" style="width:100%; height:32px; border-radius:6px; border:1px solid var(--border); cursor:pointer;">
         </div>
 
         <div class="tool-group">
             <strong>📝 Collaboration (9-16)</strong>
             <div class="grid-2">
-                <button onclick="createObj('code')">9. 💻 코드박스</button>
-                <button onclick="createObj('table')">10. 📊 실시간 표</button>
-                <button onclick="createObj('todo')">11. ✅ 할일목록</button>
-                <button onclick="createObj('link')">12. 🔗 링크공유</button>
-                <button onclick="createObj('notice')">13. 📢 공지사항</button>
-                <button onclick="createObj('mindmap')">14. 🧠 마인드맵</button>
-                <button onclick="createObj('calendar')">15. 📅 캘린더</button>
-                <button onclick="createObj('kanban')">16. 📋 칸반보드</button>
+                <button type="button" onclick="createObj('code')">9. 💻 코드박스</button>
+                <button type="button" onclick="createObj('table')">10. 📊 실시간 표</button>
+                <button type="button" onclick="createObj('todo')">11. ✅ 할일목록</button>
+                <button type="button" onclick="createObj('link')">12. 🔗 링크공유</button>
+                <button type="button" onclick="createObj('notice')">13. 📢 공지사항</button>
+                <button type="button" onclick="createObj('mindmap')">14. 🧠 마인드맵</button>
+                <button type="button" onclick="createObj('calendar')">15. 📅 캘린더</button>
+                <button type="button" onclick="createObj('kanban')">16. 📋 칸반보드</button>
             </div>
         </div>
 
         <div class="tool-group">
             <strong>🎮 Game (17-24)</strong>
             <div id="shiri-val" style="font-size:11px; color:var(--accent);">현재: 없음</div>
-            <input type="text" id="wordIn" placeholder="17. 끝말잇기" onkeypress="if(event.keyCode==13) playShiri()">
+            <input type="text" id="wordIn" placeholder="17. 끝말잇기 (엔터)" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); box-sizing:border-box;">
             <div class="grid-2">
-                <button onclick="createObj('poll')">18. 🗳️ 투표 시작</button>
-                <button onclick="createObj('rsp')">19. ✌️ 가위바위보</button>
-                <button onclick="createObj('dice')">20. 🎲 주사위</button>
-                <button onclick="createObj('name')">21. 👤 이름추첨</button>
-                <button onclick="createObj('coin')">22. 🪙 동전던지기</button>
-                <button onclick="createObj('ladder')">23. 🪜 사다리타기</button>
-                <button onclick="createObj('bomb')">24. 💣 폭탄돌리기</button>
+                <button type="button" onclick="createObj('poll')">18. 🗳️ 투표 시작</button>
+                <button type="button" onclick="createObj('rsp')">19. ✌️ 가위바위보</button>
+                <button type="button" onclick="createObj('dice')">20. 🎲 주사위</button>
+                <button type="button" onclick="createObj('name')">21. 👤 이름추첨</button>
+                <button type="button" onclick="createObj('coin')">22. 🪙 동전던지기</button>
+                <button type="button" onclick="createObj('ladder')">23. 🪜 사다리타기</button>
+                <button type="button" onclick="createObj('bomb')">24. 💣 폭탄돌리기</button>
             </div>
         </div>
 
         <div class="tool-group">
             <strong>🚀 Utility (25-32)</strong>
             <div class="grid-2">
-                <button onclick="createObj('timer')">25. ⏳ 타이머</button>
-                <button onclick="createObj('clock')">26. ⏰ 세계시각</button>
-                <button onclick="createObj('calc')">27. 🧮 계산기</button>
-                <button onclick="createObj('weather')">28. ☁️ 날씨정보</button>
-                <button onclick="createObj('palette')">29. 🎨 색상표</button>
-                <button onclick="createObj('trans')">30. 🌐 번역기</button>
-                <button onclick="createObj('qr')">31. 📱 QR생성</button>
-                <button onclick="createObj('search')">32. 🔍 검색창</button>
+                <button type="button" onclick="createObj('timer')">25. ⏳ 타이머</button>
+                <button type="button" onclick="createObj('clock')">26. ⏰ 세계시각</button>
+                <button type="button" onclick="createObj('calc')">27. 🧮 계산기</button>
+                <button type="button" onclick="createObj('weather')">28. ☁️ 날씨정보</button>
+                <button type="button" onclick="createObj('palette')">29. 🎨 색상표</button>
+                <button type="button" onclick="createObj('trans')">30. 🌐 번역기</button>
+                <button type="button" onclick="createObj('qr')">31. 📱 QR생성</button>
+                <button type="button" onclick="createObj('search')">32. 🔍 검색창</button>
             </div>
         </div>
 
         <div class="tool-group">
             <strong>⚙️ System (33-40)</strong>
             <div class="grid-2">
-                <button onclick="document.getElementById('chatFile').click()">33. 📁 파일 전송</button>
-                <button onclick="createObj('youtube')">34. 📺 유튜브</button>
-                <button onclick="createObj('music')">35. 🎵 배경음악</button>
-                <button onclick="alert('접속중!')">36. 👥 접속자수</button>
-                <button onclick="location.reload()">37. 🔄 새로고침</button>
-                <button onclick="createObj('feedback')">38. 💬 피드백</button>
-                <button onclick="alert('준비중')">39. 🌙 테마변경</button>
-                <button onclick="resetAll()" style="background:#ef4444">40. 💣 전체초기화</button>
+                <button type="button" onclick="document.getElementById('chatFile').click()">33. 📁 파일 전송</button>
+                <button type="button" onclick="createObj('youtube')">34. 📺 유튜브</button>
+                <button type="button" onclick="createObj('music')">35. 🎵 배경음악</button>
+                <button type="button" onclick="showPresenceCount()">36. 👥 접속자수</button>
+                <button type="button" onclick="location.reload()">37. 🔄 새로고침</button>
+                <button type="button" onclick="createObj('feedback')">38. 💬 피드백</button>
+                <button type="button" onclick="toggleTheme()">39. 🌙 테마변경</button>
+                <button type="button" onclick="resetAll()" style="background:#b91c1c;">40. 💣 전체초기화</button>
             </div>
         </div>
     </div>
@@ -136,15 +153,15 @@
     <div style="padding:15px; border-bottom:1px solid var(--border); font-weight:bold; color:var(--accent);">💬 STATION 채팅</div>
     <div id="chat-msgs"></div>
     <div id="chat-input-area">
-        <input type="text" id="chatInput" placeholder="메시지 입력..." onkeypress="if(event.keyCode==13) sendChat()" style="width:100%; padding:8px; background:#0f172a; color:white; border:none; border-radius:5px;">
-        <button onclick="document.getElementById('chatFile').click()" style="width:100%; margin-top:5px; background:#10b981; border:none; padding:5px; color:white; cursor:pointer;">📁 사진 전송</button>
-        <input type="file" id="chatFile" accept="image/*" style="display:none" onchange="uploadFile(this.files)">
+        <input type="text" id="chatInput" placeholder="메시지 입력..." style="width:100%; padding:8px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; box-sizing:border-box;">
+        <button type="button" onclick="document.getElementById('chatFile').click()" style="width:100%; margin-top:6px; background:#059669; border:none; padding:8px; color:white; cursor:pointer; border-radius:6px;">📁 사진 전송</button>
+        <input type="file" id="chatFile" accept="image/*" style="display:none">
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded, set, remove, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, push, onChildAdded, set, remove, onValue, update, get, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAA8DZ5jJITzGWRPK9YtpSkp8X-i38ZzcE",
@@ -160,131 +177,949 @@
     const objRef = ref(db, 'objects');
     const chatRef = ref(db, 'chats');
     const shiriRef = ref(db, 'shiri');
+    const presenceRoot = ref(db, 'presence');
+
+    const RESET_PASSWORD = '6974';
+    const RESET_PATHS = ['drawing', 'objects', 'chats', 'shiri', 'presence'];
 
     let userName = "손님";
     let camX = 0, camY = 0, isDrawing = false, currentTool = 'pen';
     let myHistory = [];
+    let gridVisible = true;
+    let presenceRef = null;
 
     const viewport = document.getElementById('viewport');
     const board = document.getElementById('board');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 10000; canvas.height = 10000;
+    canvas.width = 10000;
+    canvas.height = 10000;
 
-    // --- [입장 기능] ---
+    function escapeHtml(s) {
+        if (s == null) return '';
+        const d = document.createElement('div');
+        d.textContent = String(s);
+        return d.innerHTML;
+    }
+
+    function patchObj(id, data) {
+        return update(ref(db, `objects/${id}`), data);
+    }
+
+    function isInteractiveTarget(t) {
+        const tag = t.tagName;
+        return tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT' || tag === 'A' || tag === 'LABEL' || t.closest?.('iframe');
+    }
+
+    // --- 입장 · 접속 ---
     window.enterStation = () => {
         const input = document.getElementById('nickname-input');
-        if(!input.value.trim()) return alert("이름을 입력해주세요!");
-        userName = input.value;
+        const name = input.value.trim();
+        if (!name) return alert("이름을 입력해주세요!");
+        userName = name.slice(0, 40);
         document.getElementById('login-overlay').style.display = 'none';
-        push(chatRef, {type:'text', user:'시스템', msg: `${userName}님이 입장하셨습니다.`});
+        push(chatRef, { type: 'text', user: '시스템', msg: `${userName}님이 입장하셨습니다.` });
+        const key = userName.replace(/[.#$\[\]]/g, '_');
+        presenceRef = ref(db, `presence/${key}`);
+        set(presenceRef, { name: userName, t: Date.now() });
+        onDisconnect(presenceRef).remove();
     };
 
-    // --- [무한 이동 (우클릭)] ---
+    onValue(presenceRoot, s => {
+        const n = s.exists() ? Object.keys(s.val()).length : 0;
+        const el = document.getElementById('presence-badge');
+        if (el) el.textContent = `접속: ${n}명`;
+    });
+
+    window.showPresenceCount = () => {
+        get(presenceRoot).then(s => {
+            const n = s.exists() ? Object.keys(s.val()).length : 0;
+            alert(`현재 접속자 수: ${n}명`);
+        });
+    };
+
+    // --- 테마 · 격자 ---
+    function applyTheme(light) {
+        document.body.classList.toggle('theme-light', light);
+        localStorage.setItem('station-theme', light ? 'light' : 'dark');
+    }
+    window.toggleTheme = () => {
+        applyTheme(!document.body.classList.contains('theme-light'));
+    };
+    if (localStorage.getItem('station-theme') === 'light') applyTheme(true);
+
+    window.toggleGrid = () => {
+        gridVisible = !gridVisible;
+        board.classList.toggle('grid-off', !gridVisible);
+    };
+
+    // --- 무한 이동 ---
     viewport.oncontextmenu = e => e.preventDefault();
-    viewport.onmousedown = e => {
-        if(e.button === 2 || currentTool === 'move') {
-            let sx = e.clientX - camX, sy = e.clientY - camY;
-            window.onmousemove = m => { camX = m.clientX - sx; camY = m.clientY - sy; updateView(); };
-            window.onmouseup = () => window.onmousemove = null;
-        }
-    };
-    function updateView() { board.style.transform = `translate(${camX}px, ${camY}px)`; board.style.backgroundPosition = `${camX}px ${camY}px`; }
-
-    // --- [드로잉] ---
     viewport.addEventListener('mousedown', e => {
-        if(e.button !== 0 || currentTool === 'move') return;
+        if (e.button === 2 || currentTool === 'move') {
+            const sx = e.clientX - camX, sy = e.clientY - camY;
+            const move = m => { camX = m.clientX - sx; camY = m.clientY - sy; updateView(); };
+            const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+            window.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', up);
+        }
+    });
+
+    function updateView() {
+        board.style.transform = `translate(${camX}px, ${camY}px)`;
+        board.style.backgroundPosition = `${camX}px ${camY}px`;
+    }
+
+    // --- 드로잉 ---
+    viewport.addEventListener('mousedown', e => {
+        if (e.button !== 0 || currentTool === 'move') return;
         isDrawing = true;
-        let r = viewport.getBoundingClientRect();
+        const r = viewport.getBoundingClientRect();
         let lx = e.clientX - r.left - camX, ly = e.clientY - r.top - camY;
-        window.onmousemove = m => {
-            if(!isDrawing) return;
-            let cx = m.clientX - r.left - camX, cy = m.clientY - r.top - camY;
-            let color = currentTool==='eraser' ? '#0f172a' : document.getElementById('colorPicker').value;
-            let line = push(drawRef, {x1:lx, y1:ly, x2:cx, y2:cy, color});
+        const move = m => {
+            if (!isDrawing) return;
+            const cx = m.clientX - r.left - camX, cy = m.clientY - r.top - camY;
+            const color = currentTool === 'eraser' ? '#0f172a' : document.getElementById('colorPicker').value;
+            const line = push(drawRef, { x1: lx, y1: ly, x2: cx, y2: cy, color });
             myHistory.push(line.key);
             draw(lx, ly, cx, cy, color);
             lx = cx; ly = cy;
         };
+        const up = () => { isDrawing = false; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
     });
-    window.onmouseup = () => { isDrawing = false; window.onmousemove = null; };
-    function draw(x1,y1,x2,y2,c) { ctx.strokeStyle=c; ctx.lineWidth=3; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
-    onChildAdded(drawRef, s => { let d=s.val(); draw(d.x1, d.y1, d.x2, d.y2, d.color); });
 
-    // --- [채팅 (이름 포함)] ---
+    function draw(x1, y1, x2, y2, c) {
+        ctx.strokeStyle = c;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+    onChildAdded(drawRef, s => {
+        const d = s.val();
+        draw(d.x1, d.y1, d.x2, d.y2, d.color);
+    });
+
+    // --- 채팅 ---
     window.sendChat = () => {
-        let i = document.getElementById('chatInput');
-        if(i.value.trim()) { push(chatRef, {type:'text', user: userName, msg: i.value}); i.value=''; }
+        const i = document.getElementById('chatInput');
+        if (i.value.trim()) {
+            push(chatRef, { type: 'text', user: userName, msg: i.value.trim() });
+            i.value = '';
+        }
     };
+    document.getElementById('chatInput')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') sendChat();
+    });
+    document.getElementById('nickname-input')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') enterStation();
+    });
+    document.getElementById('wordIn')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') playShiri();
+    });
+
+    document.getElementById('chatFile').addEventListener('change', function () {
+        if (this.files?.[0]) uploadFile(this.files);
+        this.value = '';
+    });
+
     window.uploadFile = f => {
-        let r = new FileReader();
-        r.onload = e => push(chatRef, {type:'img', user: userName, msg: e.target.result});
+        if (!f?.[0]) return;
+        const r = new FileReader();
+        r.onload = e => push(chatRef, { type: 'img', user: userName, msg: e.target.result });
         r.readAsDataURL(f[0]);
     };
+
     onChildAdded(chatRef, s => {
-        let d = s.val(), div = document.createElement('div'); div.className = 'msg';
-        div.innerHTML = `<b>${d.user}</b>${d.type==='text'?d.msg:`<img src="${d.msg}" onclick="window.open(this.src)">`}`;
+        const d = s.val();
+        const div = document.createElement('div');
+        div.className = 'msg';
+        div.innerHTML = `<b>${escapeHtml(d.user)}</b>${d.type === 'text' ? escapeHtml(d.msg).replace(/\n/g, '<br>') : `<img src="${d.msg}" alt="" onclick="window.open(this.src)">`}`;
         document.getElementById('chat-msgs').appendChild(div);
         document.getElementById('chat-msgs').scrollTop = 99999;
     });
 
-    // --- [40가지 오브젝트 로직] ---
-    window.createObj = t => push(objRef, { type:t, x:-camX+200, y:-camY+200, content:'', v1:0, v2:0 });
-    onChildAdded(objRef, snap => {
-        let d=snap.val(), id=snap.key, el=document.createElement('div');
-        el.className=`obj ${d.type}`; el.style.left=d.x+'px'; el.style.top=d.y+'px';
-        
-        if(d.type==='poll') {
-            el.className += " poll-box";
-            onValue(ref(db, `objects/${id}`), s => {
-                let v = s.val(); if(!v) return;
-                el.innerHTML = `<strong>🗳️ 투표: ${v.content||'주제없음'}</strong><br>
-                <button onclick="vote('${id}',1)">찬성: ${v.v1||0}</button> <button onclick="vote('${id}',2)">반대: ${v.v2||0}</button>
-                <button onclick="remove(ref(db,'objects/${id}'))" style="background:red; color:white;">종료</button>`;
-            });
-        } else if(d.type==='rsp') {
-            el.innerHTML = `<strong>✌️ 가위바위보</strong><br><button onclick="playRSP('✌️')">✌️</button><button onclick="playRSP('✊')">✊</button><button onclick="playRSP('🖐️')">🖐️</button>`;
-        } else {
-            el.innerHTML = `<strong>${d.type.toUpperCase()}</strong><br><textarea onchange="update(ref(db,'objects/${id}'),{content:this.value})">${d.content}</textarea>`;
-        }
-        board.appendChild(el);
-        makeDraggable(el, id);
-    });
-
-    window.vote = (id, n) => {
-        onValue(ref(db, `objects/${id}`), s => {
-            let d = s.val();
-            if(n===1) update(ref(db, `objects/${id}`), {v1: (d.v1||0)+1});
-            else update(ref(db, `objects/${id}`), {v2: (d.v2||0)+1});
-        }, {onlyOnce: true});
-    };
-    window.playRSP = (c) => push(chatRef, {type:'text', user:'게임', msg:`${userName}님이 ${c}를 냈습니다!`});
-    window.playShiri = () => {
-        let i=document.getElementById('wordIn'), n=i.value.trim();
-        onValue(shiriRef, s => {
-            let l=s.val()||"";
-            if(l && l.slice(-1) !== n.charAt(0)) { alert("땡!"); return; }
-            set(shiriRef, n); push(chatRef,{type:'text', user:'게임', msg:`끝말잇기: ${n}`}); i.value='';
-        }, {onlyOnce:true});
-    };
-    onValue(shiriRef, s => document.getElementById('shiri-val').innerText = "현재: " + (s.val()||"없음"));
-
+    // --- 오브젝트 렌더 ---
     function makeDraggable(el, id) {
-        el.onmousedown = e => {
-            if(e.target.tagName==='TEXTAREA' || e.target.tagName==='BUTTON' || e.target.tagName==='INPUT') return;
-            let ox=e.clientX-el.offsetLeft, oy=e.clientY-el.offsetTop;
-            document.onmousemove = m => {
-                let nx=m.clientX-ox, ny=m.clientY-oy; el.style.left=nx+'px'; el.style.top=ny+'px';
-                update(ref(db,`objects/${id}`), {x:nx, y:ny});
+        el.addEventListener('mousedown', e => {
+            if (isInteractiveTarget(e.target)) return;
+            const ox = e.clientX - el.offsetLeft, oy = e.clientY - el.offsetTop;
+            const move = m => {
+                const nx = m.clientX - ox, ny = m.clientY - oy;
+                el.style.left = nx + 'px';
+                el.style.top = ny + 'px';
+                patchObj(id, { x: nx, y: ny });
             };
-            document.onmouseup = () => document.onmousemove = null;
-        };
+            const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+        });
     }
 
-    window.setTool = t => { currentTool=t; document.querySelectorAll('button').forEach(b=>b.classList.remove('active')); if(document.getElementById('btn-'+t)) document.getElementById('btn-'+t).classList.add('active'); };
-    window.undo = () => { let id=myHistory.pop(); if(id) remove(ref(db, `drawing/${id}`)); };
-    window.saveBoard = () => { let a=document.createElement('a'); a.download='station.png'; a.href=canvas.toDataURL(); a.click(); };
-    window.resetAll = () => { if(confirm("초기화?")) remove(ref(db)); };
+    function defaultContent(type) {
+        const map = {
+            note: '메모를 적으세요',
+            text: '긴 텍스트',
+            code: '// 코드\nconsole.log("hi");',
+            table: JSON.stringify({ rows: 3, cols: 3, cells: Array(9).fill('') }),
+            todo: '할 일 한 줄에 하나씩',
+            link: 'https://',
+            notice: '공지 제목\n내용을 적습니다.',
+            mindmap: '주제\n  가지1\n  가지2',
+            calendar: '',
+            kanban: JSON.stringify({ todo: ['할 일'], doing: ['진행'], done: ['완료'] }),
+            poll: '오늘 점심 메뉴',
+            dice: '',
+            name: '참가자1\n참가자2\n참가자3',
+            coin: '',
+            ladder: '3\n당첨1\n당첨2',
+            bomb: '30',
+            timer: JSON.stringify({ sec: 60, end: 0 }),
+            clock: '',
+            calc: '',
+            weather: 'Seoul',
+            palette: '',
+            trans: 'hello|en|ko',
+            qr: 'https://',
+            search: '',
+            youtube: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            music: 'https://www.youtube.com/watch?v=jfKfPfyJRdk',
+            feedback: '의견을 남겨주세요. 전송 시 채팅으로도 올라갑니다.'
+        };
+        return map[type] ?? '';
+    }
+
+    window.createObj = t => {
+        const content = defaultContent(t);
+        push(objRef, { type: t, x: -camX + 200, y: -camY + 200, content, v1: 0, v2: 0 });
+    };
+
+    function renderObject(el, d, id) {
+        el.className = `obj obj-obj-${d.type}`;
+        el.style.left = d.x + 'px';
+        el.style.top = d.y + 'px';
+
+        const syncTextarea = (ta, field = 'content') => {
+            ta.addEventListener('change', () => patchObj(id, { [field]: ta.value }));
+        };
+
+        if (d.type === 'poll') {
+            el.className = 'obj poll-box';
+            const sub = onValue(ref(db, `objects/${id}`), s => {
+                const v = s.val();
+                if (!v) return;
+                el.innerHTML = `
+                    <div class="obj-type"><span>🗳️ 투표</span></div>
+                    <input type="text" data-poll-title value="${escapeHtml(v.content || '')}" placeholder="투표 주제">
+                    <div class="row">
+                        <button type="button" data-v="1">찬성 <span data-c1>${v.v1 || 0}</span></button>
+                        <button type="button" data-v="2">반대 <span data-c2>${v.v2 || 0}</span></button>
+                    </div>
+                    <button type="button" data-end style="width:100%;margin-top:6px;background:#dc2626;">종료(삭제)</button>`;
+                el.querySelector('[data-poll-title]')?.addEventListener('change', e => patchObj(id, { content: e.target.value }));
+                el.querySelector('[data-v="1"]')?.addEventListener('click', () => vote(id, 1));
+                el.querySelector('[data-v="2"]')?.addEventListener('click', () => vote(id, 2));
+                el.querySelector('[data-end]')?.addEventListener('click', () => remove(ref(db, `objects/${id}`)));
+            });
+            el._firebaseUnsub = sub;
+            return;
+        }
+
+        if (d.type === 'rsp') {
+            el.innerHTML = `<div class="obj-type">✌️ 가위바위보</div>
+                <div class="row"><button type="button" data-h="✌️">✌️</button><button type="button" data-h="✊">✊</button><button type="button" data-h="🖐️">🖐️</button></div>`;
+            el.querySelectorAll('[data-h]').forEach(b => b.addEventListener('click', () => playRSP(b.getAttribute('data-h'))));
+            return;
+        }
+
+        if (d.type === 'dice') {
+            el.innerHTML = `<div class="obj-type">🎲 주사위</div><div data-out style="font-size:28px;text-align:center;padding:8px;">?</div>
+                <button type="button" data-roll style="width:100%">굴리기 (1~6)</button>`;
+            el.querySelector('[data-roll]').addEventListener('click', async () => {
+                const n = 1 + Math.floor(Math.random() * 6);
+                el.querySelector('[data-out]').textContent = n;
+                await patchObj(id, { v1: n });
+                push(chatRef, { type: 'text', user: '게임', msg: `${userName}님 주사위: ${n}` });
+            });
+            return;
+        }
+
+        if (d.type === 'coin') {
+            el.innerHTML = `<div class="obj-type">🪙 동전</div><div data-out style="text-align:center;font-size:20px;padding:8px;">—</div>
+                <div class="row"><button type="button" data-c="앞">앞</button><button type="button" data-c="뒤">뒤</button></div>
+                <button type="button" data-flip style="width:100%;margin-top:4px;">던지기</button>`;
+            el.querySelector('[data-flip]').addEventListener('click', async () => {
+                const r = Math.random() < 0.5 ? '앞면' : '뒷면';
+                el.querySelector('[data-out]').textContent = r;
+                await patchObj(id, { content: r, v1: (d.v1 || 0) + 1 });
+                push(chatRef, { type: 'text', user: '게임', msg: `${userName}님 동전: ${r}` });
+            });
+            return;
+        }
+
+        if (d.type === 'name') {
+            el.innerHTML = `<div class="obj-type">👤 이름 추첨</div>
+                <textarea data-ta>${escapeHtml(d.content || '')}</textarea>
+                <button type="button" data-pick style="width:100%;margin-top:6px;">랜덤 뽑기</button>
+                <div data-out style="margin-top:6px;font-weight:bold;text-align:center;"></div>`;
+            const ta = el.querySelector('[data-ta]');
+            ta.innerHTML = '';
+            ta.textContent = d.content || '';
+            syncTextarea(ta);
+            el.querySelector('[data-pick]').addEventListener('click', () => {
+                const names = ta.value.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+                if (!names.length) return alert('이름을 한 줄에 하나씩 적어주세요.');
+                const pick = names[Math.floor(Math.random() * names.length)];
+                el.querySelector('[data-out]').textContent = '→ ' + pick;
+                patchObj(id, { v1: (d.v1 || 0) + 1 });
+                push(chatRef, { type: 'text', user: '게임', msg: `추첨 결과: ${pick}` });
+            });
+            return;
+        }
+
+        if (d.type === 'ladder') {
+            el.innerHTML = `<div class="obj-type">🪜 사다리 (간단)</div>
+                <small>1줄: 인원 수(숫자)<br>이후 줄: 당첨 항목들</small>
+                <textarea data-ta style="min-height:80px;">${escapeHtml(d.content || defaultContent('ladder'))}</textarea>
+                <button type="button" data-run style="width:100%">결과 배정</button>
+                <pre data-out style="margin:6px 0 0;font-size:11px;white-space:pre-wrap;"></pre>`;
+            const ta = el.querySelector('[data-ta]');
+            syncTextarea(ta);
+            el.querySelector('[data-run]').addEventListener('click', () => {
+                const lines = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
+                const n = parseInt(lines[0], 10);
+                const prizes = lines.slice(1);
+                if (!n || n < 2 || !prizes.length) return alert('첫 줄은 인원(2 이상), 다음 줄부터 당첨 항목');
+                const assign = [];
+                for (let i = 0; i < n; i++) assign.push(prizes[Math.floor(Math.random() * prizes.length)]);
+                el.querySelector('[data-out]').textContent = assign.map((p, i) => `${i + 1}번 → ${p}`).join('\n');
+                patchObj(id, { v1: Date.now() });
+            });
+            return;
+        }
+
+        if (d.type === 'bomb') {
+            el.innerHTML = `<div class="obj-type">💣 폭탄 돌리기</div>
+                <label>초(10~120) <input type="number" data-sec min="10" max="120" value="${Number(d.content) || 30}" style="width:60px;"></label>
+                <div data-disp style="font-size:22px;text-align:center;margin:8px 0;">⏱ ${Number(d.content) || 30}</div>
+                <div class="row"><button type="button" data-start>시작</button><button type="button" data-pass>넘기기</button></div>
+                <small>시작 후 넘기기로 타이머만 초기화됩니다(채팅 알림).</small>`;
+            let timer = null;
+            let left = Number(d.content) || 30;
+            const disp = el.querySelector('[data-disp]');
+            const secIn = el.querySelector('[data-sec]');
+            secIn.addEventListener('change', () => patchObj(id, { content: String(secIn.value) }));
+            const tick = () => {
+                left--;
+                disp.textContent = '⏱ ' + Math.max(0, left);
+                if (left <= 0) {
+                    clearInterval(timer);
+                    timer = null;
+                    push(chatRef, { type: 'text', user: '게임', msg: `💣 ${userName}님 폭탄 터짐!` });
+                    disp.textContent = '💥';
+                }
+            };
+            el.querySelector('[data-start]').addEventListener('click', () => {
+                if (timer) clearInterval(timer);
+                left = Math.min(120, Math.max(10, parseInt(secIn.value, 10) || 30));
+                patchObj(id, { content: String(left) });
+                disp.textContent = '⏱ ' + left;
+                timer = setInterval(tick, 1000);
+                push(chatRef, { type: 'text', user: '게임', msg: `${userName}님이 폭탄 시작 (${left}초)` });
+            });
+            el.querySelector('[data-pass]').addEventListener('click', () => {
+                if (!timer) return alert('먼저 시작하세요.');
+                left = Math.min(120, Math.max(10, parseInt(secIn.value, 10) || 30));
+                disp.textContent = '⏱ ' + left;
+                push(chatRef, { type: 'text', user: '게임', msg: `${userName}님이 폭탄 넘김 → ${left}초로 리셋` });
+            });
+            return;
+        }
+
+        if (d.type === 'timer') {
+            el.innerHTML = `<div class="obj-type">⏳ 타이머</div>
+                <input type="number" data-sec min="1" max="99999" value="60" style="width:100%;margin-bottom:4px;">
+                <div data-disp style="font-size:20px;text-align:center;">--:--</div>
+                <div class="row"><button type="button" data-s>시작</button><button type="button" data-p>정지</button></div>
+                <small style="opacity:.85">시작 시 남은 시간이 Firebase에 저장되어 다른 탭·접속자와 동일하게 표시됩니다.</small>`;
+            let iv = null;
+            const disp = el.querySelector('[data-disp]');
+            const secEl = el.querySelector('[data-sec]');
+            let state = { sec: 60, end: 0 };
+
+            const fmt = t => {
+                const m = Math.floor(t / 60), s = t % 60;
+                return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            };
+            const clearIv = () => { if (iv) { clearInterval(iv); iv = null; } };
+
+            const tick = () => {
+                if (!state.end) {
+                    disp.textContent = '--:--';
+                    clearIv();
+                    return;
+                }
+                const rem = Math.max(0, Math.ceil((state.end - Date.now()) / 1000));
+                disp.textContent = fmt(rem);
+                if (rem <= 0) {
+                    clearIv();
+                    disp.textContent = '00:00';
+                }
+            };
+
+            const applyContent = raw => {
+                try {
+                    const p = JSON.parse(raw || '{}');
+                    const sec = Math.max(1, parseInt(p.sec, 10) || 60);
+                    const end = typeof p.end === 'number' ? p.end : 0;
+                    state = { sec, end };
+                    secEl.value = String(sec);
+                    clearIv();
+                    if (end > Date.now()) {
+                        iv = setInterval(tick, 250);
+                        tick();
+                    } else if (end > 0) {
+                        disp.textContent = '00:00';
+                    } else {
+                        disp.textContent = '--:--';
+                    }
+                } catch (_) {
+                    disp.textContent = '--:--';
+                }
+            };
+
+            el._timerContentUnsub = onValue(ref(db, `objects/${id}/content`), snap => {
+                applyContent(snap.val());
+            });
+
+            el.querySelector('[data-s]').addEventListener('click', () => {
+                const sec = Math.max(1, parseInt(secEl.value, 10) || 60);
+                patchObj(id, { content: JSON.stringify({ sec, end: Date.now() + sec * 1000 }) });
+            });
+            el.querySelector('[data-p]').addEventListener('click', () => {
+                const sec = Math.max(1, parseInt(secEl.value, 10) || 60);
+                patchObj(id, { content: JSON.stringify({ sec, end: 0 }) });
+            });
+            return;
+        }
+
+        if (d.type === 'clock') {
+            el.innerHTML = `<div class="obj-type">⏰ 세계 시각</div><div data-clocks style="font-size:11px;line-height:1.5;"></div>`;
+            const zones = ['Asia/Seoul', 'America/New_York', 'Europe/London', 'UTC'];
+            const tick = () => {
+                const now = new Date();
+                el.querySelector('[data-clocks]').innerHTML = zones.map(z => {
+                    const t = now.toLocaleString('ko-KR', { timeZone: z, hour: '2-digit', minute: '2-digit', second: '2-digit', weekday: 'short' });
+                    return `<div><b>${z}</b> ${t}</div>`;
+                }).join('');
+            };
+            tick();
+            const iv = setInterval(tick, 1000);
+            el._clockIv = iv;
+            return;
+        }
+
+        if (d.type === 'calc') {
+            el.innerHTML = `<div class="obj-type">🧮 계산기</div>
+                <input type="text" data-e placeholder="예: 2+3*4" style="font-family:monospace;">
+                <button type="button" data-go style="width:100%;margin-top:4px;">계산</button>
+                <div data-r style="margin-top:6px;font-weight:bold;min-height:1.2em;"></div>`;
+            el.querySelector('[data-go]').addEventListener('click', () => {
+                const raw = el.querySelector('[data-e]').value;
+                let r = '';
+                try {
+                    if (!/^[\d\s+\-*/().]+$/.test(raw)) throw new Error('허용되지 않은 문자');
+                    r = String(Function(`"use strict";return (${raw})`)());
+                } catch (e) { r = '오류'; }
+                el.querySelector('[data-r]').textContent = r;
+                patchObj(id, { content: raw, v1: String(r) });
+            });
+            return;
+        }
+
+        if (d.type === 'weather') {
+            el.innerHTML = `<div class="obj-type">☁️ 날씨</div>
+                <input type="text" data-city placeholder="도시 (영문)" value="${escapeHtml(d.content || 'Seoul')}">
+                <button type="button" data-w style="width:100%;margin-top:4px;">조회 (Open-Meteo)</button>
+                <div data-out style="margin-top:8px;font-size:12px;"></div>`;
+            const city = el.querySelector('[data-city]');
+            city.addEventListener('change', () => patchObj(id, { content: city.value }));
+            el.querySelector('[data-w]').addEventListener('click', async () => {
+                const q = city.value.trim() || 'Seoul';
+                const out = el.querySelector('[data-out]');
+                out.textContent = '불러오는 중…';
+                try {
+                    const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1`);
+                    const gj = await g.json();
+                    if (!gj.results?.[0]) { out.textContent = '검색 결과 없음'; return; }
+                    const { latitude, longitude, name, country } = gj.results[0];
+                    const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+                    const wj = await w.json();
+                    const cw = wj.current_weather;
+                    out.innerHTML = `<b>${escapeHtml(name)}</b> (${escapeHtml(country)})<br>기온: ${cw.temperature}°C · 풍속: ${cw.windspeed} · 코드: ${cw.weathercode}`;
+                    patchObj(id, { content: q, v1: cw.temperature });
+                } catch (e) {
+                    out.textContent = '오류: 네트워크 또는 API';
+                }
+            });
+            return;
+        }
+
+        if (d.type === 'palette') {
+            const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899', '#000', '#fff'];
+            el.innerHTML = `<div class="obj-type">🎨 색상표</div><div data-g style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;"></div>
+                <div data-h style="margin-top:6px;font-size:11px;word-break:break-all;"></div>`;
+            const g = el.querySelector('[data-g]');
+            colors.forEach(c => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.style.cssText = `height:28px;background:${c};border:1px solid #333;`;
+                b.title = c;
+                b.addEventListener('click', () => {
+                    navigator.clipboard.writeText(c).then(() => {
+                        el.querySelector('[data-h]').textContent = `복사: ${c}`;
+                    }).catch(() => { el.querySelector('[data-h]').textContent = c; });
+                });
+                g.appendChild(b);
+            });
+            return;
+        }
+
+        if (d.type === 'trans') {
+            el.innerHTML = `<div class="obj-type">🌐 번역 (MyMemory)</div>
+                <textarea data-t placeholder="텍스트">${escapeHtml((d.content || '').split('|')[0] || '')}</textarea>
+                <input type="text" data-pair placeholder="en|ko" value="en|ko" style="margin-top:4px;">
+                <button type="button" data-tr style="width:100%;margin-top:4px;">번역</button>
+                <div data-o style="margin-top:6px;padding:6px;background:rgba(0,0,0,0.06);border-radius:6px;min-height:2em;"></div>`;
+            const ta = el.querySelector('[data-t]');
+            ta.textContent = (d.content || '').split('|')[0] || '';
+            ta.addEventListener('change', () => patchObj(id, { content: ta.value + '|' + (el.querySelector('[data-pair]').value || 'en|ko') }));
+            el.querySelector('[data-tr]').addEventListener('click', async () => {
+                const text = ta.value.trim();
+                const pair = (el.querySelector('[data-pair]').value || 'en|ko').split('|');
+                const from = (pair[0] || 'en').trim();
+                const to = (pair[1] || 'ko').trim();
+                if (!text) return;
+                patchObj(id, { content: text + '|' + from + '|' + to });
+                const o = el.querySelector('[data-o]');
+                o.textContent = '…';
+                try {
+                    const u = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(from)}|${encodeURIComponent(to)}`;
+                    const res = await fetch(u);
+                    const j = await res.json();
+                    o.textContent = j.responseData?.translatedText || '실패';
+                } catch (e) { o.textContent = '오류'; }
+            });
+            return;
+        }
+
+        if (d.type === 'qr') {
+            el.innerHTML = `<div class="obj-type">📱 QR</div>
+                <input type="text" data-u value="${escapeHtml(d.content || 'https://')}" placeholder="URL 또는 텍스트">
+                <button type="button" data-q style="width:100%;margin-top:4px;">생성</button>
+                <div data-img style="text-align:center;margin-top:8px;"></div>`;
+            const inp = el.querySelector('[data-u]');
+            inp.addEventListener('change', () => patchObj(id, { content: inp.value }));
+            const showQr = () => {
+                const t = inp.value.trim() || ' ';
+                const src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(t)}`;
+                el.querySelector('[data-img]').innerHTML = `<img src="${src}" alt="QR" style="max-width:100%;">`;
+            };
+            el.querySelector('[data-q]').addEventListener('click', showQr);
+            showQr();
+            return;
+        }
+
+        if (d.type === 'search') {
+            el.innerHTML = `<div class="obj-type">🔍 검색</div>
+                <input type="text" data-s placeholder="검색어" value="${escapeHtml(d.content || '')}">
+                <div class="row" style="margin-top:6px;">
+                    <button type="button" data-g>Google</button>
+                    <button type="button" data-n>Naver</button>
+                </div>`;
+            const s = el.querySelector('[data-s]');
+            s.addEventListener('change', () => patchObj(id, { content: s.value }));
+            el.querySelector('[data-g]').addEventListener('click', () => {
+                const q = s.value.trim();
+                if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+            });
+            el.querySelector('[data-n]').addEventListener('click', () => {
+                const q = s.value.trim();
+                if (q) window.open('https://search.naver.com/search.naver?query=' + encodeURIComponent(q), '_blank');
+            });
+            return;
+        }
+
+        if (d.type === 'youtube') {
+            el.className += ' obj-obj-youtube';
+            function embedUrl(url) {
+                const m = url.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
+                return m ? `https://www.youtube.com/embed/${m[1]}` : '';
+            }
+            el.innerHTML = `<div class="obj-type">📺 YouTube</div>
+                <input type="url" data-u value="${escapeHtml(d.content || '')}" placeholder="YouTube URL">
+                <button type="button" data-go style="width:100%;margin-top:4px;">적용</button>
+                <div data-fr></div>`;
+            const u = el.querySelector('[data-u]');
+            u.addEventListener('change', () => patchObj(id, { content: u.value }));
+            const apply = () => {
+                const src = embedUrl(u.value.trim());
+                const fr = el.querySelector('[data-fr]');
+                fr.innerHTML = src ? `<iframe src="${src}" allowfullscreen></iframe>` : '<small>URL을 확인하세요</small>';
+            };
+            el.querySelector('[data-go]').addEventListener('click', apply);
+            apply();
+            return;
+        }
+
+        if (d.type === 'music') {
+            el.className += ' obj-obj-youtube';
+            function embedUrl(url) {
+                const m = url.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
+                return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=0` : '';
+            }
+            el.innerHTML = `<div class="obj-type">🎵 배경음 (YouTube)</div>
+                <input type="url" data-u value="${escapeHtml(d.content || '')}">
+                <div class="row"><button type="button" data-play>재생</button><button type="button" data-stop>정지</button></div>
+                <div data-fr style="margin-top:6px;"></div>`;
+            const u = el.querySelector('[data-u]');
+            u.addEventListener('change', () => patchObj(id, { content: u.value }));
+            let iframe = null;
+            el.querySelector('[data-play]').addEventListener('click', () => {
+                const m = u.value.trim().match(/(?:v=|youtu\.be\/)([\w-]{11})/);
+                const fr = el.querySelector('[data-fr]');
+                if (!m) { fr.innerHTML = '<small>유효한 URL</small>'; return; }
+                fr.innerHTML = `<iframe src="https://www.youtube.com/embed/${m[1]}?autoplay=1" allow="autoplay"></iframe>`;
+            });
+            el.querySelector('[data-stop]').addEventListener('click', () => {
+                el.querySelector('[data-fr]').innerHTML = '';
+            });
+            return;
+        }
+
+        if (d.type === 'feedback') {
+            el.innerHTML = `<div class="obj-type">💬 피드백</div>
+                <textarea data-f>${escapeHtml(d.content || '')}</textarea>
+                <button type="button" data-send style="width:100%;margin-top:6px;background:#059669;">채팅으로 전송</button>`;
+            const ta = el.querySelector('[data-f]');
+            ta.textContent = d.content || '';
+            syncTextarea(ta);
+            el.querySelector('[data-send]').addEventListener('click', () => {
+                const msg = ta.value.trim();
+                if (!msg) return;
+                push(chatRef, { type: 'text', user: `피드백(${userName})`, msg });
+                alert('채팅에 전송했습니다.');
+            });
+            return;
+        }
+
+        if (d.type === 'table') {
+            let model;
+            try { model = JSON.parse(d.content || '{}'); } catch (_) { model = { rows: 3, cols: 3, cells: [] }; }
+            if (!model.cells) model.cells = [];
+            const rows = model.rows || 3, cols = model.cols || 3;
+            const idx = (r, c) => r * cols + c;
+
+            function build() {
+                let html = `<div class="obj-type">📊 표</div><div class="row" style="margin-bottom:4px;">
+                    <button type="button" data-ar>행+</button><button type="button" data-ac>열+</button></div>
+                    <table style="width:100%;border-collapse:collapse;font-size:11px;">`;
+                for (let r = 0; r < rows; r++) {
+                    html += '<tr>';
+                    for (let c = 0; c < cols; c++) {
+                        const v = model.cells[idx(r, c)] ?? '';
+                        html += `<td style="border:1px solid #999;padding:2px;"><input type="text" data-r="${r}" data-c="${c}" value="${escapeHtml(v)}" style="width:100%;box-sizing:border-box;"></td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</table>';
+                el.innerHTML = html;
+                el.querySelectorAll('input[data-r]').forEach(inp => {
+                    inp.addEventListener('change', () => {
+                        const r = +inp.getAttribute('data-r'), c = +inp.getAttribute('data-c');
+                        const i = idx(r, c);
+                        while (model.cells.length <= i) model.cells.push('');
+                        model.cells[i] = inp.value;
+                        patchObj(id, { content: JSON.stringify({ rows, cols, cells: model.cells }) });
+                    });
+                });
+                el.querySelector('[data-ar]')?.addEventListener('click', () => {
+                    model.rows = rows + 1;
+                    const needed = model.rows * model.cols;
+                    while (model.cells.length < needed) model.cells.push('');
+                    patchObj(id, { content: JSON.stringify(model) });
+                    Object.assign(d, { content: JSON.stringify(model) });
+                    renderObject(el, d, id);
+                });
+                el.querySelector('[data-ac]')?.addEventListener('click', () => {
+                    const newCols = cols + 1;
+                    const nc = [];
+                    for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < newCols; c++) {
+                            if (c < cols) nc.push(model.cells[idx(r, c)] ?? '');
+                            else nc.push('');
+                        }
+                    }
+                    model = { rows, cols: newCols, cells: nc };
+                    patchObj(id, { content: JSON.stringify(model) });
+                    Object.assign(d, { content: JSON.stringify(model) });
+                    renderObject(el, d, id);
+                });
+            }
+            build();
+            return;
+        }
+
+        if (d.type === 'todo') {
+            const items = (d.content || '').split('\n').filter(s => s.length);
+            const lines = items.length ? items : ['할 일 1', '할 일 2'];
+            el.innerHTML = `<div class="obj-type">✅ 할 일</div><div data-list></div>
+                <button type="button" data-add style="width:100%;margin-top:6px;">항목 추가</button>`;
+            const list = el.querySelector('[data-list]');
+            function drawList() {
+                list.innerHTML = lines.map((line, i) => {
+                    const done = d.v1 & (1 << i);
+                    return `<div style="display:flex;align-items:center;gap:4px;margin:2px 0;">
+                        <input type="checkbox" data-i="${i}" ${done ? 'checked' : ''}>
+                        <input type="text" data-t="${i}" value="${escapeHtml(line)}" style="flex:1;">
+                    </div>`;
+                }).join('');
+                list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        const i = +cb.getAttribute('data-i');
+                        let mask = d.v1 || 0;
+                        if (cb.checked) mask |= (1 << i); else mask &= ~(1 << i);
+                        d.v1 = mask;
+                        patchObj(id, { v1: mask });
+                    });
+                });
+                list.querySelectorAll('input[data-t]').forEach(inp => {
+                    inp.addEventListener('change', () => {
+                        const i = +inp.getAttribute('data-t');
+                        lines[i] = inp.value;
+                        patchObj(id, { content: lines.join('\n') });
+                    });
+                });
+            }
+            drawList();
+            el.querySelector('[data-add]').addEventListener('click', () => {
+                lines.push('새 할 일');
+                patchObj(id, { content: lines.join('\n') });
+                d.content = lines.join('\n');
+                renderObject(el, d, id);
+            });
+            return;
+        }
+
+        if (d.type === 'link') {
+            el.innerHTML = `<div class="obj-type">🔗 링크</div>
+                <input type="url" data-u value="${escapeHtml(d.content || 'https://')}">
+                <button type="button" data-o style="width:100%;margin-top:6px;">새 탭에서 열기</button>`;
+            const u = el.querySelector('[data-u]');
+            u.addEventListener('change', () => patchObj(id, { content: u.value }));
+            el.querySelector('[data-o]').addEventListener('click', () => {
+                let url = u.value.trim();
+                if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+                window.open(url, '_blank');
+            });
+            return;
+        }
+
+        if (d.type === 'notice') {
+            el.innerHTML = `<div class="obj-type">📢 공지</div>
+                <textarea data-ta style="min-height:100px;font-weight:600;">${escapeHtml(d.content || '')}</textarea>`;
+            const ta = el.querySelector('[data-ta]');
+            ta.textContent = d.content || '';
+            syncTextarea(ta);
+            return;
+        }
+
+        if (d.type === 'mindmap') {
+            el.innerHTML = `<div class="obj-type">🧠 마인드맵 (들여쓰기)</div>
+                <small>들여쓰기로 계층 표현</small>
+                <textarea data-ta style="min-height:120px;font-family:monospace;">${escapeHtml(d.content || '')}</textarea>`;
+            const ta = el.querySelector('[data-ta]');
+            ta.textContent = d.content || '';
+            syncTextarea(ta);
+            return;
+        }
+
+        if (d.type === 'calendar') {
+            const now = new Date();
+            const y = now.getFullYear(), m = now.getMonth();
+            const firstWeekday = new Date(y, m, 1).getDay();
+            const daysInMonth = new Date(y, m + 1, 0).getDate();
+            let html = `<div class="obj-type">📅 ${y}년 ${m + 1}월</div>
+                <table style="width:100%;font-size:10px;text-align:center;border-collapse:collapse;">`;
+            const wk = ['일', '월', '화', '수', '목', '금', '토'];
+            html += '<tr>' + wk.map(x => `<th style="border:1px solid #999;padding:2px;">${x}</th>`).join('') + '</tr>';
+            let day = 1;
+            for (let r = 0; r < 6 && day <= daysInMonth; r++) {
+                html += '<tr>';
+                for (let c = 0; c < 7; c++) {
+                    if ((r === 0 && c < firstWeekday) || day > daysInMonth) html += '<td style="border:1px solid #eee;"></td>';
+                    else html += `<td style="border:1px solid #ccc;padding:2px;">${day++}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table><small style="display:block;margin-top:4px;">이 기기 로컬 날짜 기준</small>';
+            el.innerHTML = html;
+            return;
+        }
+
+        if (d.type === 'kanban') {
+            let k;
+            try { k = JSON.parse(d.content || '{}'); } catch (_) { k = { todo: [], doing: [], done: [] }; }
+            ['todo', 'doing', 'done'].forEach(key => { if (!Array.isArray(k[key])) k[key] = []; });
+
+            function renderK() {
+                const titles = { todo: '📝 할 일', doing: '🔄 진행', done: '✅ 완료' };
+                el.innerHTML = `<div class="obj-type">📋 칸반</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:10px;">
+                    ${['todo', 'doing', 'done'].map(key => `
+                        <div style="background:rgba(0,0,0,0.06);border-radius:6px;padding:4px;">
+                            <b>${titles[key]}</b>
+                            <div data-col="${key}"></div>
+                            <button type="button" data-add="${key}" style="width:100%;margin-top:4px;font-size:10px;">+</button>
+                        </div>`).join('')}
+                    </div>`;
+                ['todo', 'doing', 'done'].forEach(key => {
+                    const col = el.querySelector(`[data-col="${key}"]`);
+                    k[key].forEach((text, i) => {
+                        const wrap = document.createElement('div');
+                        wrap.style.cssText = 'display:flex;gap:2px;margin:2px 0;align-items:center;';
+                        const inp = document.createElement('input');
+                        inp.type = 'text';
+                        inp.value = text;
+                        inp.style.flex = '1';
+                        inp.style.fontSize = '10px';
+                        inp.addEventListener('change', () => {
+                            k[key][i] = inp.value;
+                            patchObj(id, { content: JSON.stringify(k) });
+                        });
+                        const del = document.createElement('button');
+                        del.type = 'button';
+                        del.textContent = '×';
+                        del.style.padding = '0 4px';
+                        del.addEventListener('click', () => {
+                            k[key].splice(i, 1);
+                            patchObj(id, { content: JSON.stringify(k) });
+                            renderK();
+                        });
+                        wrap.appendChild(inp);
+                        wrap.appendChild(del);
+                        col.appendChild(wrap);
+                    });
+                    el.querySelector(`[data-add="${key}"]`).addEventListener('click', () => {
+                        k[key].push('새 카드');
+                        patchObj(id, { content: JSON.stringify(k) });
+                        renderK();
+                    });
+                });
+            }
+            renderK();
+            return;
+        }
+
+        /* note, text — 기본 메모 */
+        const labels = { note: '📋 포스트잇', text: '🔤 텍스트' };
+        const title = labels[d.type] || d.type;
+        el.innerHTML = `<div class="obj-type">${title}</div><textarea data-ta></textarea>`;
+        const ta = el.querySelector('[data-ta]');
+        ta.textContent = d.content || '';
+        if (d.type === 'text') ta.style.minHeight = '120px';
+        syncTextarea(ta);
+    }
+
+    onChildAdded(objRef, snap => {
+        const d = snap.val(), id = snap.key;
+        const el = document.createElement('div');
+        renderObject(el, d, id);
+        board.appendChild(el);
+        makeDraggable(el, id);
+
+        onValue(ref(db, `objects/${id}`), s => {
+            if (!s.exists()) {
+                if (el._clockIv) { clearInterval(el._clockIv); el._clockIv = null; }
+                if (typeof el._firebaseUnsub === 'function') { el._firebaseUnsub(); el._firebaseUnsub = null; }
+                if (typeof el._timerContentUnsub === 'function') { el._timerContentUnsub(); el._timerContentUnsub = null; }
+                el.remove();
+                return;
+            }
+            const nd = s.val();
+            if (nd.x != null) el.style.left = nd.x + 'px';
+            if (nd.y != null) el.style.top = nd.y + 'px';
+        });
+    });
+
+    window.vote = async (id, n) => {
+        const r = ref(db, `objects/${id}`);
+        const snap = await get(r);
+        const data = snap.val();
+        if (!data) return;
+        if (n === 1) await update(r, { v1: (data.v1 || 0) + 1 });
+        else await update(r, { v2: (data.v2 || 0) + 1 });
+    };
+
+    window.playRSP = c => {
+        push(chatRef, { type: 'text', user: '게임', msg: `${userName}님이 ${c}를 냈습니다!` });
+    };
+
+    window.playShiri = () => {
+        const i = document.getElementById('wordIn');
+        const n = i.value.trim();
+        if (!n) return;
+        get(shiriRef).then(s => {
+            const l = s.val() || '';
+            if (l && l.slice(-1) !== n.charAt(0)) { alert('땡!'); return; }
+            set(shiriRef, n);
+            push(chatRef, { type: 'text', user: '게임', msg: `끝말잇기: ${n}` });
+            i.value = '';
+        });
+    };
+    onValue(shiriRef, s => {
+        document.getElementById('shiri-val').innerText = '현재: ' + (s.val() || '없음');
+    });
+
+    window.setTool = t => {
+        currentTool = t;
+        ['pen', 'eraser', 'move'].forEach(x => {
+            const b = document.getElementById('btn-' + x);
+            if (b) b.classList.toggle('active', x === t);
+        });
+    };
+
+    window.undo = () => {
+        const key = myHistory.pop();
+        if (key) remove(ref(db, `drawing/${key}`));
+    };
+
+    window.saveBoard = () => {
+        const a = document.createElement('a');
+        a.download = 'station.png';
+        a.href = canvas.toDataURL();
+        a.click();
+    };
+
+    window.resetAll = async () => {
+        const pw = prompt('전체 초기화 비밀번호를 입력하세요:');
+        if (pw !== RESET_PASSWORD) {
+            alert('비밀번호가 올바르지 않습니다.');
+            return;
+        }
+        if (!confirm('모든 그림·오브젝트·채팅·게임 기록이 삭제됩니다. 계속할까요?')) return;
+        try {
+            await Promise.all(RESET_PATHS.map(p => remove(ref(db, p))));
+            alert('초기화했습니다. 화면을 새로고침합니다.');
+            location.reload();
+        } catch (e) {
+            alert('초기화 중 오류가 났습니다. 권한을 확인하세요.');
+        }
+    };
 </script>
 </body>
 </html>
