@@ -112,6 +112,15 @@
         #admin-panel.open { display:block; }
         .admin-user { border:1px solid var(--border); border-radius:8px; padding:8px; margin:6px 0; }
         #access-password-wrap { margin-top:8px; }
+        #chat-notices { max-height:150px; overflow:auto; padding:8px 12px; border-bottom:1px solid var(--border); }
+        #chat-notices:empty { display:none; }
+        .chat-notice { background:rgba(245,158,11,.15); border-left:3px solid #f59e0b; padding:7px; margin:4px 0; border-radius:4px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+        #rsp-panel { font-size:11px; margin:10px 0; }
+        #rsp-game { display:none; border:1px solid var(--border); border-radius:8px; padding:8px; margin-top:6px; }
+        #rsp-result { white-space:pre-wrap; overflow-wrap:anywhere; margin:6px 0; }
+        #admin-notice-input { width:100%; box-sizing:border-box; min-height:70px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:8px; }
+        #admin-notices .admin-user { white-space:pre-wrap; overflow-wrap:anywhere; }
+
     </style>
 </head>
 <body>
@@ -185,9 +194,20 @@
                     <div id="shiri-log"></div>
                 </div>
             </div>
+            <div id="rsp-panel">
+                <strong>✌️ 가위바위보 1:1</strong>
+                <select id="rsp-opponent" style="width:100%;padding:8px;margin-top:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;"><option value="">접속자 선택</option></select>
+                <button type="button" onclick="challengeRSP()" style="width:100%;margin-top:5px;">⚔️ 대전 신청</button>
+                <div id="rsp-game">
+                    <div id="rsp-status"></div>
+                    <div class="row" id="rsp-choices"><button type="button" onclick="chooseRSP('rock')">✊</button><button type="button" onclick="chooseRSP('paper')">🖐️</button><button type="button" onclick="chooseRSP('scissors')">✌️</button></div>
+                    <div id="rsp-result"></div>
+                    <button type="button" id="rsp-rematch" onclick="rematchRSP()" style="display:none;width:100%;">🔁 재대결 신청</button>
+                </div>
+            </div>
             <div class="grid-2">
                 <button type="button" onclick="createObj('poll')">18. 🗳️ 투표 시작</button>
-                <button type="button" onclick="createObj('rsp')">19. ✌️ 가위바위보</button>
+                <button type="button" onclick="document.getElementById('rsp-opponent').focus()">19. ✌️ 가위바위보</button>
                 <button type="button" onclick="createObj('dice')">20. 🎲 주사위</button>
                 <button type="button" onclick="createObj('name')">21. 👤 이름추첨</button>
                 <button type="button" onclick="createObj('coin')">22. 🪙 동전던지기</button>
@@ -221,7 +241,7 @@
                 <button type="button" onclick="createObj('feedback')">38. 💬 피드백</button>
                 <button type="button" onclick="toggleTheme()">39. 🌙 테마변경</button>
                 <button type="button" onclick="resetAll()" style="background:#b91c1c;">40. 💣 전체초기화</button>
-                <button type="button" onclick="openAdmin()" style="background:#7c3aed;grid-column:1/-1;">👑 방장 기능</button>
+                
             </div>
         </div>
     </div>
@@ -233,7 +253,8 @@
 </div>
 
 <div id="chat-panel">
-    <div style="padding:15px; border-bottom:1px solid var(--border); font-weight:bold; color:var(--accent);">💬 2-4 채팅</div>
+    <div style="padding:12px 15px; border-bottom:1px solid var(--border); font-weight:bold; color:var(--accent);display:flex;justify-content:space-between;align-items:center;">💬 2-4 채팅 <button type="button" onclick="openAdmin()" style="background:#7c3aed;min-height:36px;">SEC</button></div>
+    <div id="chat-notices" aria-live="polite"></div>
     <div id="chat-msgs"></div>
     <div id="chat-input-area">
         <input type="text" id="chatInput" placeholder="문자 메시지 입력..." style="width:100%; padding:8px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; box-sizing:border-box;">
@@ -247,9 +268,13 @@
 
 <div id="admin-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><h3 style="margin:0;color:var(--accent);">👑 2-4 방장 기능</h3><button type="button" onclick="closeAdmin()">닫기</button></div>
+    <div class="tool-group"><strong>📢 공지 추가</strong><textarea id="admin-notice-input" maxlength="1000" placeholder="채팅 상단에 고정할 공지 내용을 입력하세요."></textarea><button type="button" onclick="addNotice()">등록</button></div>
+    <div class="tool-group"><strong>📌 공지 관리</strong><div id="admin-notices">공지 없음</div></div>
+    <div class="tool-group"><strong>💬 채팅 관리</strong><div class="row"><button type="button" onclick="toggleChatLock()">채팅 잠금·해제</button><button type="button" onclick="clearChats()" style="background:#b91c1c;">채팅 전체 삭제</button></div><div id="admin-chat-lock"></div></div>
     <p style="font-size:11px;opacity:.8;">표시 정보: 닉네임, 접속 시각, 접속 상태, 끝말잇기 상태. IP·정확한 위치 같은 개인정보는 수집하지 않습니다.</p>
     <div class="tool-group"><strong>🔐 시간 외 입장 비밀번호</strong><input type="text" id="admin-access-pw" placeholder="새 비밀번호"><button type="button" onclick="changeAccessPassword()">비밀번호 변경</button><small>수요일 14:00~15:20에는 비밀번호 없이 입장. 그 외 시간에는 이 비밀번호 필요.</small></div>
     <div class="tool-group"><strong>👥 접속자 관리</strong><div id="admin-users"></div></div>
+    <div class="tool-group"><strong>🚫 밴 된 사람</strong><div id="admin-bans">불러오는 중…</div><small>밴은 이 브라우저의 기기 ID 기준입니다. 방장이 여기서 해제할 때까지 같은 브라우저에서는 닉네임을 바꿔도 입장할 수 없습니다.</small></div>
 </div>
 
 <script type="module">
@@ -275,6 +300,11 @@
     const shiriGamesRef = ref(db, 'shiriGames');
     const accessPasswordRef = ref(db, 'meta/accessPassword');
     const kicksRef = ref(db, 'kicks');
+    const bansRef = ref(db, 'bans');
+    const noticesRef = ref(db, 'notices');
+    const rspInvitesRef = ref(db, 'rspInvites');
+    const rspGamesRef = ref(db, 'rspGames');
+    const chatLockedRef = ref(db, 'meta/chatLocked');
     const presenceRoot = ref(db, 'presence');
     const metaEpochRef = ref(db, 'meta/sessionEpoch');
 
@@ -306,7 +336,7 @@
     const ADMIN_PASSWORD = '7116';
     const DEFAULT_ACCESS_PASSWORD = '7116';
     const BANNED_WORDS = ['수따','이따','담따','이담따','혜성','안혜성','차헌철','윤미','유미','김윤정','이율이','이은채','은채','배한나','채현기','주따','주전자','은혜'];
-    const RESET_PATHS = ['drawing', 'objects', 'chats', 'shiri', 'presence', 'shiriInvites', 'shiriGames', 'kicks'];
+    const RESET_PATHS = ['drawing', 'objects', 'chats', 'shiri', 'presence', 'shiriInvites', 'shiriGames', 'kicks', 'rspInvites', 'rspGames'];
 
     let userName = "손님";
     let camX = 0, camY = 0, isDrawing = false, currentTool = 'pen';
@@ -321,6 +351,23 @@
     let currentShiriGameId = null;
     let currentShiriGame = null;
     let adminUnlocked = false;
+    let currentBans = {};
+    let currentNotices = {};
+    let chatLocked = false;
+    let currentRSPGameId = null;
+    let currentRSPGame = null;
+    let unwatchRSP = null;
+    const seenRSPInvites = new Set();
+    const DEVICE_ID_KEY = 'station-2-4-device-id';
+    function getDeviceId() {
+        let id = localStorage.getItem(DEVICE_ID_KEY);
+        if (!id) {
+            id = (crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+            localStorage.setItem(DEVICE_ID_KEY, id);
+        }
+        return id;
+    }
+    const deviceId = getDeviceId();
 
     const viewport = document.getElementById('viewport');
     const board = document.getElementById('board');
@@ -431,6 +478,8 @@
         const input = document.getElementById('nickname-input');
         const name = input.value.trim();
         if (!name) return alert('이름을 입력해주세요!');
+        const banSnap = await get(ref(db, `bans/${deviceId}`));
+        if (banSnap.exists()) return alert('이 기기는 방장에 의해 차단되었습니다. 방장이 밴을 해제해야 다시 입장할 수 있습니다.');
         if (!isFreeAccessTime()) {
             const snap = await get(accessPasswordRef);
             const required = snap.val() || DEFAULT_ACCESS_PASSWORD;
@@ -442,7 +491,7 @@
         push(chatRef, { type:'text', user:'시스템', msg:`${userName}님이 입장하셨습니다.`, t:Date.now() });
         presenceRef = push(presenceRoot);
         sessionId = presenceRef.key;
-        set(presenceRef, { name:userName, t:Date.now(), status:'online', sessionId });
+        set(presenceRef, { name:userName, t:Date.now(), status:'online', sessionId, deviceId });
         onDisconnect(presenceRef).remove();
         onValue(ref(db, `kicks/${sessionId}`), snap => {
             if (snap.exists()) {
@@ -450,7 +499,14 @@
                 remove(presenceRef).finally(() => location.reload());
             }
         });
+        onValue(ref(db, `bans/${deviceId}`), snap => {
+            if (snap.exists()) {
+                alert('방장에 의해 밴되었습니다. 방장이 해제할 때까지 다시 입장할 수 없습니다.');
+                remove(presenceRef).finally(() => location.reload());
+            }
+        });
         listenForShiriInvites();
+        listenForRSPInvites();
     };
 
     onValue(presenceRoot, s => {
@@ -466,7 +522,18 @@
             sel.innerHTML = '<option value="">접속자 선택</option>' + entries.filter(([id]) => id !== sessionId).map(([id,u]) => `<option value="${id}">${escapeHtml(u.name || '손님')}</option>`).join('');
             if ([...sel.options].some(o => o.value === old)) sel.value = old;
         }
+        const rspSel = document.getElementById('rsp-opponent');
+        if (rspSel) {
+            const old = rspSel.value;
+            rspSel.innerHTML = '<option value="">접속자 선택</option>' + entries.filter(([id]) => id !== sessionId).map(([id,u]) => `<option value="${id}">${escapeHtml(u.name || '손님')}</option>`).join('');
+            if ([...rspSel.options].some(o => o.value === old)) rspSel.value = old;
+        }
         if (adminUnlocked) renderAdminUsers();
+    });
+
+    onValue(bansRef, s => {
+        currentBans = s.val() || {};
+        if (adminUnlocked) renderAdminBans();
     });
 
     window.showPresenceCount = () => alert(`현재 접속자 수: ${Object.keys(currentPresence).length}명\n` + Object.values(currentPresence).map(u => u.name).join(', '));
@@ -478,13 +545,72 @@
         document.getElementById('admin-panel').classList.add('open');
         get(accessPasswordRef).then(s => document.getElementById('admin-access-pw').value = s.val() || DEFAULT_ACCESS_PASSWORD);
         renderAdminUsers();
+        renderAdminBans();
+        renderAdminNotices();
+        renderChatLock();
     };
     window.closeAdmin = () => document.getElementById('admin-panel').classList.remove('open');
+    function renderChatLock() {
+        document.getElementById('admin-chat-lock').textContent = chatLocked ? '현재 채팅 잠김' : '현재 채팅 열림';
+    }
+    onValue(chatLockedRef, snap => {
+        chatLocked = !!snap.val();
+        const input = document.getElementById('chatInput');
+        input.disabled = chatLocked && !adminUnlocked;
+        input.placeholder = input.disabled ? '🔒 방장이 채팅을 잠갔습니다' : '문자 메시지 입력...';
+        if (adminUnlocked) renderChatLock();
+    });
+    window.toggleChatLock = async () => {
+        if (!adminUnlocked) return;
+        await set(chatLockedRef, !chatLocked);
+    };
+    window.clearChats = async () => {
+        if (!adminUnlocked || !confirm('채팅 전체를 삭제할까요?')) return;
+        await remove(chatRef);
+    };
+    function renderNotices() {
+        const box = document.getElementById('chat-notices');
+        box.replaceChildren();
+        Object.values(currentNotices).sort((a,b)=>(a.t||0)-(b.t||0)).forEach(n => {
+            const row=document.createElement('div'); row.className='chat-notice';
+            row.textContent='📢 ' + (n.text || ''); box.appendChild(row);
+        });
+    }
+    function renderAdminNotices() {
+        const box=document.getElementById('admin-notices');
+        const rows=Object.entries(currentNotices).sort((a,b)=>(a[1].t||0)-(b[1].t||0));
+        box.replaceChildren();
+        if (!rows.length) { box.textContent='공지 없음'; return; }
+        rows.forEach(([id,n]) => {
+            const row=document.createElement('div'); row.className='admin-user';
+            const content=document.createElement('div'); content.textContent=n.text || '';
+            const button=document.createElement('button'); button.type='button'; button.textContent='삭제';
+            button.onclick=() => deleteNotice(id); row.append(content,button); box.appendChild(row);
+        });
+    }
+    onValue(noticesRef, snap => {
+        currentNotices=snap.val() || {};
+        renderNotices();
+        if (adminUnlocked) renderAdminNotices();
+    });
+    window.addNotice = async () => {
+        if (!adminUnlocked) return;
+        const input=document.getElementById('admin-notice-input');
+        const text=input.value.trim();
+        if (!text) return alert('공지 내용을 입력하세요.');
+        await set(push(noticesRef), {text, by:userName, t:Date.now()});
+        input.value='';
+    };
+    window.deleteNotice = async id => {
+        if (!adminUnlocked || !currentNotices[id] || !confirm('이 공지를 삭제할까요?')) return;
+        await remove(ref(db, `notices/${id}`));
+    };
     function renderAdminUsers() {
         const box = document.getElementById('admin-users'); if (!box) return;
         const rows = Object.entries(currentPresence);
-        box.innerHTML = rows.length ? rows.map(([id,u]) => `<div class="admin-user"><b>${escapeHtml(u.name || '손님')}</b><br><small>접속: ${new Date(u.t || Date.now()).toLocaleString('ko-KR')} · 상태: ${escapeHtml(u.status || 'online')}</small><br><button type="button" data-kick="${id}" style="margin-top:5px;background:#b91c1c;">추방</button></div>`).join('') : '접속자 없음';
+        box.innerHTML = rows.length ? rows.map(([id,u]) => `<div class="admin-user"><b>${escapeHtml(u.name || '손님')}</b><br><small>접속: ${new Date(u.t || Date.now()).toLocaleString('ko-KR')} · 상태: ${escapeHtml(u.status || 'online')}</small><br><div class="row"><button type="button" data-kick="${id}" style="background:#b91c1c;">추방</button><button type="button" data-ban="${id}" style="background:#7f1d1d;">🚫 밴</button></div></div>`).join('') : '접속자 없음';
         box.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => kickUser(b.dataset.kick));
+        box.querySelectorAll('[data-ban]').forEach(b => b.onclick = () => banUser(b.dataset.ban));
     }
     window.kickUser = async id => {
         if (!adminUnlocked) return;
@@ -493,6 +619,27 @@
         await set(ref(db, `kicks/${id}`), { t:Date.now(), by:userName || '방장' });
         await remove(ref(db, `presence/${id}`));
     };
+    window.banUser = async id => {
+        if (!adminUnlocked) return;
+        const u = currentPresence[id]; if (!u || !u.deviceId) return alert('이 접속자는 기기 ID가 없어 밴할 수 없습니다. 새로고침 후 다시 접속하게 해주세요.');
+        if (!confirm(`${u.name}님을 방장이 해제할 때까지 밴할까요?`)) return;
+        await set(ref(db, `bans/${u.deviceId}`), { name:u.name || '손님', t:Date.now(), by:userName || '방장' });
+        await set(ref(db, `kicks/${id}`), { t:Date.now(), by:userName || '방장', reason:'ban' });
+        await remove(ref(db, `presence/${id}`));
+    };
+    function renderAdminBans() {
+        const box = document.getElementById('admin-bans'); if (!box) return;
+        const rows = Object.entries(currentBans);
+        box.innerHTML = rows.length ? rows.map(([did,b]) => `<div class="admin-user"><b>${escapeHtml(b.name || '이름 없음')}</b><br><small>밴: ${new Date(b.t || Date.now()).toLocaleString('ko-KR')}</small><br><button type="button" data-unban="${escapeHtml(did)}" style="margin-top:5px;background:#059669;">밴 해제</button></div>`).join('') : '밴 된 사람 없음';
+        box.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => unbanUser(b.dataset.unban));
+    }
+    window.unbanUser = async device => {
+        if (!adminUnlocked) return;
+        const b = currentBans[device];
+        if (!confirm(`${b?.name || '이 사용자'}의 밴을 해제할까요?`)) return;
+        await remove(ref(db, `bans/${device}`));
+    };
+
     window.changeAccessPassword = async () => {
         if (!adminUnlocked) return;
         const v = document.getElementById('admin-access-pw').value.trim();
@@ -674,6 +821,7 @@
         const i = document.getElementById('chatInput');
         const msg = i.value.trim();
         if (!msg) return;
+        if (chatLocked && !adminUnlocked) return alert('방장이 채팅을 잠갔습니다.');
         const hit = BANNED_WORDS.find(w => msg.includes(w));
         if (hit) {
             push(chatRef, { type:'text', user:userName, msg:'🚫 검열되었습니다.', censored:true, t:Date.now() });
@@ -701,6 +849,7 @@
     window.uploadFile = f => {
         const file = f?.[0];
         if (!file) return;
+        if (chatLocked && !adminUnlocked) return alert('방장이 채팅을 잠갔습니다.');
         const MAX_FILE = 3.5 * 1024 * 1024;
         if (file.size > MAX_FILE) return alert('파일은 3.5MB 이하만 전송할 수 있어요.');
         const r = new FileReader();
@@ -725,6 +874,9 @@
         return `${(n / 1024 / 1024).toFixed(1)}MB`;
     }
 
+    onValue(chatRef, snap => {
+        if (!snap.exists()) document.getElementById('chat-msgs').replaceChildren();
+    });
     onChildAdded(chatRef, s => {
         const d = s.val();
         const div = document.createElement('div');
@@ -858,9 +1010,7 @@
         }
 
         if (d.type === 'rsp') {
-            el.innerHTML = `<div class="obj-type">✌️ 가위바위보</div>
-                <div class="row"><button type="button" data-h="✌️">✌️</button><button type="button" data-h="✊">✊</button><button type="button" data-h="🖐️">🖐️</button></div>`;
-            el.querySelectorAll('[data-h]').forEach(b => b.addEventListener('click', () => playRSP(b.getAttribute('data-h'))));
+            el.innerHTML = '<div class="obj-type">✌️ 가위바위보 1:1</div><p>왼쪽 게임 메뉴에서 접속자를 선택해 대전하세요.</p>';
             return;
         }
 
@@ -1497,8 +1647,96 @@
         else await update(r, { v2: (data.v2 || 0) + 1 });
     };
 
-    window.playRSP = c => {
-        push(chatRef, { type: 'text', user: '게임', msg: `${userName}님이 ${c}를 냈습니다!` });
+    const rspLabel = {rock:'✊ 바위', paper:'🖐️ 보', scissors:'✌️ 가위'};
+    function rspWinner(a,b) {
+        if (a===b) return 'draw';
+        return (a==='rock'&&b==='scissors') || (a==='scissors'&&b==='paper') || (a==='paper'&&b==='rock') ? 'p1' : 'p2';
+    }
+    window.challengeRSP = async () => {
+        if (!sessionId) return alert('먼저 입장하세요.');
+        const target=document.getElementById('rsp-opponent').value;
+        const opponent=currentPresence[target];
+        if (!target || !opponent) return alert('대전할 접속자를 선택하세요.');
+        await set(push(rspInvitesRef), {from:sessionId, fromName:userName, to:target, toName:opponent.name, status:'pending', t:Date.now()});
+        alert(`${opponent.name}님에게 가위바위보 대전을 신청했습니다.`);
+    };
+    function listenForRSPInvites() {
+        onChildAdded(rspInvitesRef, snap => {
+            const v=snap.val();
+            if (!v || v.to!==sessionId || v.status!=='pending' || seenRSPInvites.has(snap.key)) return;
+            seenRSPInvites.add(snap.key);
+            if (confirm(`${v.fromName}님이 가위바위보 대전을 신청했습니다. 수락할까요?`)) acceptRSPInvite(snap.key,v);
+            else update(ref(db, `rspInvites/${snap.key}`), {status:'declined'});
+        });
+    }
+    async function acceptRSPInvite(inviteId,inv) {
+        const game=push(rspGamesRef);
+        await set(game, {p1:inv.from,p1Name:inv.fromName,p2:sessionId,p2Name:userName,status:'playing',moves:{},created:Date.now()});
+        await update(ref(db, `rspInvites/${inviteId}`), {status:'accepted',gameId:game.key});
+        watchRSPGame(game.key);
+    }
+    onChildAdded(rspGamesRef, snap => {
+        const g=snap.val();
+        if (sessionId && g && (g.p1===sessionId || g.p2===sessionId) && g.status==='playing') watchRSPGame(snap.key);
+    });
+    function watchRSPGame(id) {
+        if (currentRSPGameId===id) return;
+        if (unwatchRSP) unwatchRSP();
+        currentRSPGameId=id;
+        unwatchRSP=onValue(ref(db, `rspGames/${id}`), snap => {
+            const g=snap.val(); if (!g) return;
+            currentRSPGame=g;
+            const mine=g.p1===sessionId ? 'p1':'p2', other=mine==='p1'?'p2':'p1';
+            const myCommit=g.commits?.[mine], otherCommit=g.commits?.[other];
+            const myChoice=g.reveals?.[mine]?.choice, otherChoice=g.reveals?.[other]?.choice;
+            if (myCommit && otherCommit && !myChoice) revealRSPChoice(id,mine);
+            document.getElementById('rsp-game').style.display='block';
+            document.getElementById('rsp-choices').style.display=g.status==='playing' && !myCommit ? 'flex':'none';
+            document.getElementById('rsp-rematch').style.display=g.status==='ended' ? 'block':'none';
+            const opponent=mine==='p1'?g.p2Name:g.p1Name;
+            document.getElementById('rsp-status').textContent=g.status==='playing' ? `${opponent}님과 대전 중 · ${myCommit?'선택 완료':'선택하세요'} · ${otherCommit?'상대 선택 완료':'상대 선택 대기'}` : `${opponent}님과 대전 종료`;
+            const result=document.getElementById('rsp-result');
+            if (myChoice && otherChoice) {
+                const outcome=rspWinner(g.reveals.p1.choice,g.reveals.p2.choice);
+                const verdict=outcome==='draw'?'무승부':outcome===mine?'승리!':'패배';
+                result.textContent=`${g.p1Name}: ${rspLabel[g.reveals.p1.choice]}\n${g.p2Name}: ${rspLabel[g.reveals.p2.choice]}\n${verdict}`;
+                if (g.status==='playing') update(ref(db, `rspGames/${id}`), {status:'ended',winner:outcome,ended:Date.now()});
+            } else result.textContent=myCommit && otherCommit ? '양쪽 선택 완료 · 공개 중…' : '두 사람이 모두 고르면 선택이 공개됩니다.';
+        });
+    }
+    async function hashRSPChoice(choice,salt) {
+        const bytes=new TextEncoder().encode(`${choice}:${salt}`);
+        const digest=await crypto.subtle.digest('SHA-256',bytes);
+        return Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');
+    }
+    async function revealRSPChoice(id,side) {
+        const saved=localStorage.getItem(`rsp-choice-${id}-${side}`);
+        if (!saved) return;
+        try {
+            const {choice,salt}=JSON.parse(saved);
+            const commit=await hashRSPChoice(choice,salt);
+            if (currentRSPGame?.commits?.[side]!==commit) return;
+            await set(ref(db, `rspGames/${id}/reveals/${side}`),{choice,salt});
+        } catch(e) { console.error('가위바위보 공개 오류',e); }
+    }
+    window.chooseRSP = async choice => {
+        const g=currentRSPGame;
+        if (!g || g.status!=='playing' || !rspLabel[choice]) return;
+        const side=g.p1===sessionId?'p1':'p2';
+        if (g.commits?.[side]) return;
+        if (!crypto.subtle) return alert('보안 연결(HTTPS)에서 게임을 열어주세요.');
+        const salt=Array.from(crypto.getRandomValues(new Uint8Array(24)),n=>n.toString(16).padStart(2,'0')).join('');
+        const hash=await hashRSPChoice(choice,salt);
+        localStorage.setItem(`rsp-choice-${currentRSPGameId}-${side}`,JSON.stringify({choice,salt}));
+        await set(ref(db, `rspGames/${currentRSPGameId}/commits/${side}`), hash);
+    };
+    window.rematchRSP = async () => {
+        const g=currentRSPGame; if (!g || g.status!=='ended') return;
+        const target=g.p1===sessionId?g.p2:g.p1;
+        const opponent=currentPresence[target];
+        if (!opponent) return alert('상대가 접속 중이 아닙니다.');
+        await set(push(rspInvitesRef), {from:sessionId,fromName:userName,to:target,toName:opponent.name,status:'pending',t:Date.now()});
+        alert(`${opponent.name}님에게 재대결을 신청했습니다.`);
     };
 
     function lastChar(word) { return Array.from(word.trim()).at(-1) || ''; }
