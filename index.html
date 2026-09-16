@@ -71,8 +71,10 @@
         .chat-send-row button { flex:1; min-height:40px; }
         #chatInput { min-height:42px; font-size:16px !important; }
         #nickname-input { font-size:16px; }
-        #viewport, #board { touch-action:none; overscroll-behavior:none; -webkit-user-select:none; user-select:none; }
-        button, input, textarea, select { touch-action:manipulation; }
+        #viewport { overscroll-behavior:none; }
+        #board { touch-action:none; -webkit-user-select:none; user-select:none; }
+        #sidebar, #chat-panel, #mobile-bar, button, input, textarea, select, label { touch-action:manipulation; pointer-events:auto; }
+        #sidebar-scroll, #chat-msgs { touch-action:pan-y; -webkit-overflow-scrolling:touch; }
 
         @media (max-width: 1100px) {
             #sidebar { width:240px; min-width:220px; }
@@ -108,7 +110,7 @@
 
 <div id="mobile-bar">
     <button type="button" onclick="toggleMobilePanel('tools')">☰ 도구</button>
-    <strong>2-4</strong>
+    <strong>2-4 <span id="touch-status" style="font-size:10px;opacity:.75;">●</span></strong>
     <button type="button" onclick="toggleMobilePanel('chat')">💬 채팅</button>
 </div>
 
@@ -123,7 +125,7 @@
 
 <div id="sidebar">
     <div id="sidebar-scroll">
-        <h2 style="color:var(--accent); text-align:center; margin:0;">2-4</h2>
+        <h2 style="color:var(--accent); text-align:center; margin:0;">2-4 <small style="font-size:10px;opacity:.65">touch-fix 2</small></h2>
         <div id="presence-badge">접속: —</div>
         <div class="tool-group">
             <strong>🖌️ 그리기 · 오브젝트는 보드 아래 🗑️에 놓으면 삭제</strong>
@@ -361,6 +363,15 @@
         return tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT' || tag === 'A' || tag === 'LABEL' || t.closest?.('iframe');
     }
 
+
+    window.addEventListener('error', () => {
+        const st = document.getElementById('touch-status');
+        if (st) { st.textContent = '⚠'; st.title = '스크립트 오류 발생'; }
+    });
+    window.addEventListener('unhandledrejection', () => {
+        const st = document.getElementById('touch-status');
+        if (st) { st.textContent = '⚠'; st.title = 'Firebase/스크립트 오류 발생'; }
+    });
     // --- 입장 · 접속 ---
     window.enterStation = () => {
         const input = document.getElementById('nickname-input');
@@ -401,6 +412,7 @@
     window.toggleMobilePanel = which => {
         const sidebar = document.getElementById('sidebar');
         const chat = document.getElementById('chat-panel');
+        if (!sidebar || !chat) return;
         if (which === 'tools') {
             sidebar.classList.toggle('mobile-open');
             chat.classList.remove('mobile-open');
@@ -415,77 +427,135 @@
         board.classList.toggle('grid-off', !gridVisible);
     };
 
-    // --- 무한 이동 ---
+    // --- 보드 터치/펜 입력 ---
+    // 중요: 삼성패드에서는 viewport 전체에 touch-action:none을 걸면 버튼/스크롤까지 먹통이 될 수 있다.
+    // 그래서 실제 그림판(#board)에서만 Pointer Events를 처리한다.
     viewport.oncontextmenu = e => e.preventDefault();
-    viewport.addEventListener('pointerdown', e => {
-        if (e.target.closest?.('.obj')) return;
-        if (e.pointerType === 'mouse' && e.button !== 2 && currentTool !== 'move') return;
-        if (e.pointerType !== 'mouse' && currentTool !== 'move') return;
-        e.preventDefault();
-        viewport.setPointerCapture?.(e.pointerId);
-        const sx = e.clientX - camX, sy = e.clientY - camY;
-        const move = m => {
-            if (m.pointerId !== e.pointerId) return;
-            camX = m.clientX - sx; camY = m.clientY - sy; updateView();
+
+    function boardPoint(e) {
+        const r = viewport.getBoundingClientRect();
+        return {
+            x: e.clientX - r.left - camX,
+            y: e.clientY - r.top - camY
         };
-        const up = m => {
-            if (m.pointerId !== e.pointerId) return;
-            viewport.removeEventListener('pointermove', move);
-            viewport.removeEventListener('pointerup', up);
-            viewport.removeEventListener('pointercancel', up);
-        };
-        viewport.addEventListener('pointermove', move);
-        viewport.addEventListener('pointerup', up);
-        viewport.addEventListener('pointercancel', up);
-    });
+    }
 
     function updateView() {
         board.style.transform = `translate(${camX}px, ${camY}px)`;
         board.style.backgroundPosition = `${camX}px ${camY}px`;
     }
 
-    // --- 드로잉 (펜·붓·마커·부분 지우개 + 획 단위 되돌리기) ---
-    viewport.addEventListener('pointerdown', e => {
-        if (currentTool === 'move') return;
-        if (e.target.closest?.('.obj')) return;
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-        if (isInteractiveTarget(e.target)) return;
-        e.preventDefault();
-        isDrawing = true;
-        currentStrokeKeys = [];
-        viewport.setPointerCapture?.(e.pointerId);
-        const r = viewport.getBoundingClientRect();
-        let lx = e.clientX - r.left - camX, ly = e.clientY - r.top - camY;
-        const tool = currentTool;
-        const move = m => {
-            if (!isDrawing || m.pointerId !== e.pointerId) return;
-            const cx = m.clientX - r.left - camX, cy = m.clientY - r.top - camY;
-            const w = effectiveWidthForTool(tool);
-            const isEraser = tool === 'eraser';
-            const payload = {
-                x1: lx, y1: ly, x2: cx, y2: cy,
-                color: document.getElementById('colorPicker').value,
-                w,
-                tool: isEraser ? 'eraser' : tool,
-                er: isEraser ? 1 : 0
-            };
-            const line = push(drawRef, payload);
-            currentStrokeKeys.push(line.key);
-            lx = cx; ly = cy;
-        };
-        const up = m => {
-            if (m.pointerId !== e.pointerId) return;
+    let activePointerId = null;
+    let lastPoint = null;
+    let panStart = null;
+    let activeInputMode = null; // draw | pan
+
+    function finishBoardPointer(e) {
+        if (activePointerId == null || (e && e.pointerId !== activePointerId)) return;
+        if (activeInputMode === 'draw') {
             isDrawing = false;
-            viewport.removeEventListener('pointermove', move);
-            viewport.removeEventListener('pointerup', up);
-            viewport.removeEventListener('pointercancel', up);
             if (currentStrokeKeys.length) myStrokeStack.push([...currentStrokeKeys]);
             currentStrokeKeys = [];
+        }
+        activePointerId = null;
+        lastPoint = null;
+        panStart = null;
+        activeInputMode = null;
+    }
+
+    board.addEventListener('pointerdown', e => {
+        // 오브젝트 자체의 드래그/입력은 오브젝트 이벤트가 담당한다.
+        if (e.target.closest?.('.obj') || isInteractiveTarget(e.target)) return;
+
+        const mousePan = e.pointerType === 'mouse' && e.button === 2;
+        const toolPan = currentTool === 'move';
+        const shouldPan = mousePan || toolPan;
+        if (e.pointerType === 'mouse' && !shouldPan && e.button !== 0) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        activePointerId = e.pointerId;
+        board.setPointerCapture?.(e.pointerId);
+
+        if (shouldPan) {
+            activeInputMode = 'pan';
+            panStart = { sx: e.clientX - camX, sy: e.clientY - camY };
+            return;
+        }
+
+        activeInputMode = 'draw';
+        isDrawing = true;
+        currentStrokeKeys = [];
+        lastPoint = boardPoint(e);
+    }, { passive: false });
+
+    board.addEventListener('pointermove', e => {
+        if (e.pointerId !== activePointerId) return;
+        if (activeInputMode === 'pan' && panStart) {
+            e.preventDefault();
+            camX = e.clientX - panStart.sx;
+            camY = e.clientY - panStart.sy;
+            updateView();
+            return;
+        }
+        if (activeInputMode !== 'draw' || !isDrawing || !lastPoint) return;
+        e.preventDefault();
+        const pt = boardPoint(e);
+        // 아주 짧은 움직임도 S펜/손가락에서 보이게 저장한다.
+        const tool = currentTool;
+        const isEraser = tool === 'eraser';
+        const payload = {
+            x1: lastPoint.x, y1: lastPoint.y, x2: pt.x, y2: pt.y,
+            color: document.getElementById('colorPicker').value,
+            w: effectiveWidthForTool(tool),
+            tool: isEraser ? 'eraser' : tool,
+            er: isEraser ? 1 : 0
         };
-        viewport.addEventListener('pointermove', move);
-        viewport.addEventListener('pointerup', up);
-        viewport.addEventListener('pointercancel', up);
-    });
+        const line = push(drawRef, payload);
+        currentStrokeKeys.push(line.key);
+        lastPoint = pt;
+    }, { passive: false });
+
+    board.addEventListener('pointerup', finishBoardPointer, { passive: false });
+    board.addEventListener('pointercancel', finishBoardPointer, { passive: false });
+    board.addEventListener('lostpointercapture', finishBoardPointer);
+
+    // Pointer Events가 없는 아주 구형 브라우저용 최소 터치 폴백
+    if (!window.PointerEvent) {
+        let tLast = null;
+        board.addEventListener('touchstart', e => {
+            if (currentTool === 'move' || e.target.closest?.('.obj')) return;
+            const t = e.changedTouches?.[0];
+            if (!t) return;
+            e.preventDefault();
+            isDrawing = true;
+            currentStrokeKeys = [];
+            const r = viewport.getBoundingClientRect();
+            tLast = { x: t.clientX-r.left-camX, y: t.clientY-r.top-camY };
+        }, { passive:false });
+        board.addEventListener('touchmove', e => {
+            if (!isDrawing || !tLast) return;
+            const t = e.changedTouches?.[0];
+            if (!t) return;
+            e.preventDefault();
+            const r = viewport.getBoundingClientRect();
+            const pt = { x:t.clientX-r.left-camX, y:t.clientY-r.top-camY };
+            const tool = currentTool, isEraser = tool === 'eraser';
+            const line = push(drawRef, {
+                x1:tLast.x, y1:tLast.y, x2:pt.x, y2:pt.y,
+                color:document.getElementById('colorPicker').value,
+                w:effectiveWidthForTool(tool), tool:isEraser?'eraser':tool, er:isEraser?1:0
+            });
+            currentStrokeKeys.push(line.key);
+            tLast = pt;
+        }, { passive:false });
+        const tEnd = () => {
+            if (currentStrokeKeys.length) myStrokeStack.push([...currentStrokeKeys]);
+            currentStrokeKeys = []; isDrawing = false; tLast = null;
+        };
+        board.addEventListener('touchend', tEnd, { passive:false });
+        board.addEventListener('touchcancel', tEnd, { passive:false });
+    }
 
     onChildAdded(drawRef, s => {
         const d = s.val();
@@ -496,49 +566,6 @@
         drawingCache.delete(s.key);
         redrawCanvasFromCache();
     });
-
-    // 구형 삼성 인터넷/일부 WebView용 터치 폴백
-    if (!window.PointerEvent) {
-        let touchDrawing = false, tlx = 0, tly = 0, touchTool = 'pen';
-        viewport.addEventListener('touchstart', e => {
-            if (currentTool === 'move' || e.target.closest?.('.obj') || isInteractiveTarget(e.target)) return;
-            const t = e.touches[0];
-            if (!t) return;
-            e.preventDefault();
-            touchDrawing = true;
-            currentStrokeKeys = [];
-            const r = viewport.getBoundingClientRect();
-            tlx = t.clientX - r.left - camX;
-            tly = t.clientY - r.top - camY;
-            touchTool = currentTool;
-        }, { passive: false });
-        viewport.addEventListener('touchmove', e => {
-            if (!touchDrawing) return;
-            const t = e.touches[0];
-            if (!t) return;
-            e.preventDefault();
-            const r = viewport.getBoundingClientRect();
-            const cx = t.clientX - r.left - camX, cy = t.clientY - r.top - camY;
-            const isEraser = touchTool === 'eraser';
-            const line = push(drawRef, {
-                x1: tlx, y1: tly, x2: cx, y2: cy,
-                color: document.getElementById('colorPicker').value,
-                w: effectiveWidthForTool(touchTool),
-                tool: isEraser ? 'eraser' : touchTool,
-                er: isEraser ? 1 : 0
-            });
-            currentStrokeKeys.push(line.key);
-            tlx = cx; tly = cy;
-        }, { passive: false });
-        const endTouchDraw = () => {
-            if (!touchDrawing) return;
-            touchDrawing = false;
-            if (currentStrokeKeys.length) myStrokeStack.push([...currentStrokeKeys]);
-            currentStrokeKeys = [];
-        };
-        viewport.addEventListener('touchend', endTouchDraw, { passive: false });
-        viewport.addEventListener('touchcancel', endTouchDraw, { passive: false });
-    }
 
     // --- 채팅 ---
     window.sendChat = () => {
@@ -1388,7 +1415,7 @@
             const b = document.getElementById('btn-' + x);
             if (b) b.classList.toggle('active', x === t);
         });
-        if (window.matchMedia('(pointer: coarse)').matches && ['pen','brush','marker','eraser','move'].includes(t)) {
+        if ((window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 820) && ['pen','brush','marker','eraser','move'].includes(t)) {
             document.getElementById('sidebar')?.classList.remove('mobile-open');
         }
     };
