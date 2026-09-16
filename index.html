@@ -120,6 +120,8 @@
         #rsp-result { white-space:pre-wrap; overflow-wrap:anywhere; margin:6px 0; }
         #admin-notice-input { width:100%; box-sizing:border-box; min-height:70px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:8px; }
         #admin-notices .admin-user { white-space:pre-wrap; overflow-wrap:anywhere; }
+        #game-invite-alert { display:none; position:fixed; top:62px; left:50%; transform:translateX(-50%); width:min(420px,calc(100vw - 24px)); z-index:1800; padding:14px; border:2px solid var(--accent); border-radius:10px; background:var(--panel); color:var(--text); box-shadow:0 12px 35px rgba(0,0,0,.5); }
+        #game-invite-alert .row { margin-top:10px; }
 
     </style>
 </head>
@@ -198,6 +200,7 @@
                 <strong>✌️ 가위바위보 1:1</strong>
                 <select id="rsp-opponent" style="width:100%;padding:8px;margin-top:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;"><option value="">접속자 선택</option></select>
                 <button type="button" onclick="challengeRSP()" style="width:100%;margin-top:5px;">⚔️ 대전 신청</button>
+                <div id="rsp-invite-status" style="margin-top:5px;"></div>
                 <div id="rsp-game">
                     <div id="rsp-status"></div>
                     <div class="row" id="rsp-choices"><button type="button" onclick="chooseRSP('rock')">✊</button><button type="button" onclick="chooseRSP('paper')">🖐️</button><button type="button" onclick="chooseRSP('scissors')">✌️</button></div>
@@ -252,6 +255,7 @@
     <div id="trash-bin" title="오브젝트를 여기로 끌어다 놓으면 삭제">🗑️</div>
 </div>
 
+<div id="game-invite-alert" role="alertdialog" aria-live="assertive"><strong id="game-invite-text"></strong><div class="row"><button type="button" onclick="respondRSPInvite(true)" style="background:#059669;">수락</button><button type="button" onclick="respondRSPInvite(false)" style="background:#b91c1c;">거절</button></div></div>
 <div id="chat-panel">
     <div style="padding:12px 15px; border-bottom:1px solid var(--border); font-weight:bold; color:var(--accent);display:flex;justify-content:space-between;align-items:center;">💬 2-4 채팅 <button type="button" onclick="openAdmin()" style="background:#7c3aed;min-height:36px;">SEC</button></div>
     <div id="chat-notices" aria-live="polite"></div>
@@ -357,7 +361,8 @@
     let currentRSPGameId = null;
     let currentRSPGame = null;
     let unwatchRSP = null;
-    const seenRSPInvites = new Set();
+    let pendingRSPInvite = null;
+    let ownRSPInviteId = null;
     const DEVICE_ID_KEY = 'station-2-4-device-id';
     function getDeviceId() {
         let id = localStorage.getItem(DEVICE_ID_KEY);
@@ -1657,18 +1662,31 @@
         const target=document.getElementById('rsp-opponent').value;
         const opponent=currentPresence[target];
         if (!target || !opponent) return alert('대전할 접속자를 선택하세요.');
-        await set(push(rspInvitesRef), {from:sessionId, fromName:userName, to:target, toName:opponent.name, status:'pending', t:Date.now()});
-        alert(`${opponent.name}님에게 가위바위보 대전을 신청했습니다.`);
+        const invite=push(rspInvitesRef);
+        ownRSPInviteId=invite.key;
+        await set(invite, {from:sessionId, fromName:userName, to:target, toName:opponent.name, status:'pending', t:Date.now()});
+        document.getElementById('rsp-invite-status').textContent=`${opponent.name}님 응답 대기 중`;
     };
     function listenForRSPInvites() {
-        onChildAdded(rspInvitesRef, snap => {
-            const v=snap.val();
-            if (!v || v.to!==sessionId || v.status!=='pending' || seenRSPInvites.has(snap.key)) return;
-            seenRSPInvites.add(snap.key);
-            if (confirm(`${v.fromName}님이 가위바위보 대전을 신청했습니다. 수락할까요?`)) acceptRSPInvite(snap.key,v);
-            else update(ref(db, `rspInvites/${snap.key}`), {status:'declined'});
+        onValue(rspInvitesRef, snap => {
+            const invites=Object.entries(snap.val() || {});
+            const incoming=invites.find(([id,v]) => v.to===sessionId && v.status==='pending');
+            pendingRSPInvite=incoming ? {id:incoming[0],...incoming[1]} : null;
+            document.getElementById('game-invite-alert').style.display=pendingRSPInvite ? 'block':'none';
+            document.getElementById('game-invite-text').textContent=pendingRSPInvite ? `${pendingRSPInvite.fromName}님이 가위바위보 대전을 신청했습니다.` : '';
+            if (ownRSPInviteId) {
+                const own=invites.find(([id]) => id===ownRSPInviteId)?.[1];
+                if (own) document.getElementById('rsp-invite-status').textContent=own.status==='pending' ? `${own.toName}님 응답 대기 중` : own.status==='declined' ? `${own.toName}님이 대전을 거절했습니다.` : `${own.toName}님이 수락했습니다.`;
+            }
         });
     }
+    window.respondRSPInvite = async accept => {
+        const inv=pendingRSPInvite; if (!inv) return;
+        pendingRSPInvite=null;
+        document.getElementById('game-invite-alert').style.display='none';
+        if (accept) await acceptRSPInvite(inv.id,inv);
+        else await update(ref(db, `rspInvites/${inv.id}`), {status:'declined'});
+    };
     async function acceptRSPInvite(inviteId,inv) {
         const game=push(rspGamesRef);
         await set(game, {p1:inv.from,p1Name:inv.fromName,p2:sessionId,p2Name:userName,status:'playing',moves:{},created:Date.now()});
@@ -1735,8 +1753,10 @@
         const target=g.p1===sessionId?g.p2:g.p1;
         const opponent=currentPresence[target];
         if (!opponent) return alert('상대가 접속 중이 아닙니다.');
-        await set(push(rspInvitesRef), {from:sessionId,fromName:userName,to:target,toName:opponent.name,status:'pending',t:Date.now()});
-        alert(`${opponent.name}님에게 재대결을 신청했습니다.`);
+        const invite=push(rspInvitesRef);
+        ownRSPInviteId=invite.key;
+        await set(invite, {from:sessionId,fromName:userName,to:target,toName:opponent.name,status:'pending',t:Date.now()});
+        document.getElementById('rsp-invite-status').textContent=`${opponent.name}님 재대결 응답 대기 중`;
     };
 
     function lastChar(word) { return Array.from(word.trim()).at(-1) || ''; }
