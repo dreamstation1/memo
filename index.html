@@ -195,6 +195,7 @@
                 <div id="shiri-game" style="display:none;margin-top:6px;">
                     <div id="shiri-turn" style="font-weight:700;margin-bottom:4px;"></div>
                     <input type="text" id="wordIn" placeholder="단어 입력" style="width:100%;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;box-sizing:border-box;">
+                    <small>두음법칙 적용 · 중복 단어는 등록되지 않습니다.</small>
                     <div class="row"><button type="button" onclick="playShiri()">단어 내기</button><button type="button" onclick="forfeitShiri()" style="background:#b91c1c;">포기</button></div>
                     <div id="shiri-log"></div>
                 </div>
@@ -1767,6 +1768,25 @@
 
     function lastChar(word) { return Array.from(word.trim()).at(-1) || ''; }
     function firstChar(word) { return Array.from(word.trim())[0] || ''; }
+    function nextFirstChars(last) {
+        const allowed = new Set([last]);
+        if (last === '읏') allowed.add('릇');
+        const code = last.codePointAt(0);
+        if (code < 0xAC00 || code > 0xD7A3) return allowed;
+        const offset = code - 0xAC00;
+        const initial = Math.floor(offset / 588);
+        const medial = Math.floor((offset % 588) / 28);
+        const final = offset % 28;
+        // ㄴ/ㄹ + ㅣ·ㅑ·ㅕ·ㅖ·ㅛ·ㅠ 계열은 ㅇ으로 이어갈 수 있다.
+        if ((initial === 2 || initial === 5) && [2, 6, 7, 12, 17, 20].includes(medial)) {
+            allowed.add(String.fromCodePoint(0xAC00 + 11 * 588 + medial * 28 + final));
+        }
+        // ㄹ + ㅏ·ㅐ·ㅗ·ㅚ·ㅜ·ㅡ 계열은 ㄴ으로 이어갈 수 있다.
+        if (initial === 5 && [0, 1, 8, 11, 13, 18].includes(medial)) {
+            allowed.add(String.fromCodePoint(0xAC00 + 2 * 588 + medial * 28 + final));
+        }
+        return allowed;
+    }
     window.challengeShiri = async () => {
         if (!sessionId) return alert('먼저 입장하세요.');
         const target = document.getElementById('shiri-opponent').value;
@@ -1827,7 +1847,9 @@
         const i=document.getElementById('wordIn'); const n=i.value.trim();
         const g=currentShiriGame; if (!n || !g || g.status!=='playing') return;
         if (g.turn !== sessionId) return alert('상대 차례입니다.');
-        if (g.lastWord && firstChar(n) !== lastChar(g.lastWord)) return alert(`'${lastChar(g.lastWord)}'로 시작해야 합니다.`);
+        if (g.lastWord && !nextFirstChars(lastChar(g.lastWord)).has(firstChar(n))) {
+            return alert(`'${[...nextFirstChars(lastChar(g.lastWord))].join(' 또는 ')}'로 시작해야 합니다.`);
+        }
         const used=Object.values(g.words||{}).some(w=>w.word===n); if (used) return alert('이미 나온 단어입니다.');
         const other = g.p1===sessionId ? g.p2 : g.p1;
         const wordRef=push(ref(db, `shiriGames/${currentShiriGameId}/words`));
