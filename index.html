@@ -122,6 +122,8 @@
         #admin-notices .admin-user { white-space:pre-wrap; overflow-wrap:anywhere; }
         #game-invite-alert { display:none; position:fixed; top:62px; left:50%; transform:translateX(-50%); width:min(420px,calc(100vw - 24px)); z-index:1800; padding:14px; border:2px solid var(--accent); border-radius:10px; background:var(--panel); color:var(--text); box-shadow:0 12px 35px rgba(0,0,0,.5); }
         #game-invite-alert .row { margin-top:10px; }
+        #shiri-invite-alert { display:none; position:fixed; top:155px; left:50%; transform:translateX(-50%); width:min(420px,calc(100vw - 24px)); z-index:1800; padding:14px; border:2px solid var(--accent); border-radius:10px; background:var(--panel); color:var(--text); box-shadow:0 12px 35px rgba(0,0,0,.5); }
+        #shiri-invite-alert .row { margin-top:10px; }
 
     </style>
 </head>
@@ -189,6 +191,7 @@
                 <div id="shiri-val" style="color:var(--accent);">끝말잇기: 대기 중</div>
                 <select id="shiri-opponent" style="width:100%;padding:8px;margin-top:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;"><option value="">접속자 선택</option></select>
                 <button type="button" onclick="challengeShiri()" style="width:100%;margin-top:5px;">⚔️ 끝말잇기 신청</button>
+                <div id="shiri-invite-status" style="margin-top:5px;"></div>
                 <div id="shiri-game" style="display:none;margin-top:6px;">
                     <div id="shiri-turn" style="font-weight:700;margin-bottom:4px;"></div>
                     <input type="text" id="wordIn" placeholder="단어 입력" style="width:100%;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;box-sizing:border-box;">
@@ -255,6 +258,7 @@
     <div id="trash-bin" title="오브젝트를 여기로 끌어다 놓으면 삭제">🗑️</div>
 </div>
 
+<div id="shiri-invite-alert" role="alertdialog" aria-live="assertive"><strong id="shiri-invite-text"></strong><div class="row"><button type="button" onclick="respondShiriInvite(true)" style="background:#059669;">수락</button><button type="button" onclick="respondShiriInvite(false)" style="background:#b91c1c;">거절</button></div></div>
 <div id="game-invite-alert" role="alertdialog" aria-live="assertive"><strong id="game-invite-text"></strong><div class="row"><button type="button" onclick="respondRSPInvite(true)" style="background:#059669;">수락</button><button type="button" onclick="respondRSPInvite(false)" style="background:#b91c1c;">거절</button></div></div>
 <div id="chat-panel">
     <div style="padding:12px 15px; border-bottom:1px solid var(--border); font-weight:bold; color:var(--accent);display:flex;justify-content:space-between;align-items:center;">💬 2-4 채팅 <button type="button" onclick="openAdmin()" style="background:#7c3aed;min-height:36px;">SEC</button></div>
@@ -354,6 +358,8 @@
     let currentPresence = {};
     let currentShiriGameId = null;
     let currentShiriGame = null;
+    let pendingShiriInvite = null;
+    let ownShiriInviteId = null;
     let adminUnlocked = false;
     let currentBans = {};
     let currentNotices = {};
@@ -1767,18 +1773,30 @@
         if (!target) return alert('대전할 접속자를 선택하세요.');
         const opponent = currentPresence[target]; if (!opponent) return alert('상대가 접속 중이 아닙니다.');
         const inv = push(shiriInvitesRef);
+        ownShiriInviteId = inv.key;
         await set(inv, { from:sessionId, fromName:userName, to:target, toName:opponent.name, status:'pending', t:Date.now() });
-        alert(`${opponent.name}님에게 끝말잇기를 신청했습니다.`);
+        document.getElementById('shiri-invite-status').textContent = `${opponent.name}님 응답 대기 중`;
     };
     function listenForShiriInvites() {
-        onChildAdded(shiriInvitesRef, snap => {
-            const v = snap.val();
-            if (!v || v.to !== sessionId || v.status !== 'pending') return;
-            set(ref(db, `shiriInvites/${snap.key}/status`), 'seen');
-            if (confirm(`${v.fromName}님이 끝말잇기를 신청했습니다. 수락할까요?`)) acceptShiriInvite(snap.key, v);
-            else set(ref(db, `shiriInvites/${snap.key}/status`), 'declined');
+        onValue(shiriInvitesRef, snap => {
+            const invites = Object.entries(snap.val() || {});
+            const incoming = invites.find(([id,v]) => v.to === sessionId && v.status === 'pending');
+            pendingShiriInvite = incoming ? {id:incoming[0], ...incoming[1]} : null;
+            document.getElementById('shiri-invite-alert').style.display = pendingShiriInvite ? 'block' : 'none';
+            document.getElementById('shiri-invite-text').textContent = pendingShiriInvite ? `${pendingShiriInvite.fromName}님이 끝말잇기를 신청했습니다.` : '';
+            if (ownShiriInviteId) {
+                const own = invites.find(([id]) => id === ownShiriInviteId)?.[1];
+                if (own) document.getElementById('shiri-invite-status').textContent = own.status === 'pending' ? `${own.toName}님 응답 대기 중` : own.status === 'declined' ? `${own.toName}님이 대전을 거절했습니다.` : `${own.toName}님이 수락했습니다.`;
+            }
         });
     }
+    window.respondShiriInvite = async accept => {
+        const inv = pendingShiriInvite; if (!inv) return;
+        pendingShiriInvite = null;
+        document.getElementById('shiri-invite-alert').style.display = 'none';
+        if (accept) await acceptShiriInvite(inv.id, inv);
+        else await update(ref(db, `shiriInvites/${inv.id}`), {status:'declined'});
+    };
     async function acceptShiriInvite(inviteId, inv) {
         const game = push(shiriGamesRef);
         await set(game, { p1:inv.from, p1Name:inv.fromName, p2:sessionId, p2Name:userName, turn:inv.from, lastWord:'', words:{}, status:'playing', winner:'', created:Date.now() });
