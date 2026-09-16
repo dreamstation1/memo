@@ -104,6 +104,14 @@
             button { min-height:38px; font-size:12px; }
             .obj { min-width:145px; max-width:min(300px, 78vw); }
         }
+
+        #presence-list { font-size:11px; line-height:1.55; max-height:120px; overflow:auto; padding:6px; border:1px solid var(--border); border-radius:6px; }
+        #shiri-panel { font-size:11px; }
+        #shiri-log { max-height:130px; overflow:auto; padding:6px; background:rgba(0,0,0,.12); border-radius:6px; margin-top:6px; }
+        #admin-panel { display:none; position:fixed; inset:8%; z-index:1600; background:var(--panel); border:2px solid var(--accent); border-radius:12px; padding:16px; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+        #admin-panel.open { display:block; }
+        .admin-user { border:1px solid var(--border); border-radius:8px; padding:8px; margin:6px 0; }
+        #access-password-wrap { margin-top:8px; }
     </style>
 </head>
 <body>
@@ -118,6 +126,8 @@
     <div class="login-box">
         <h3>아지트 입장 닉네임</h3>
         <input type="text" id="nickname-input" placeholder="이름을 입력하세요" autocomplete="username">
+        <div id="access-password-wrap"><input type="password" id="access-password" placeholder="입장 비밀번호"></div>
+        <div id="access-hint" style="font-size:11px;opacity:.75;margin:4px 0 8px;"></div>
         <br>
         <button type="button" onclick="enterStation()" style="width:100%; padding:10px; background:var(--accent); color:#0f172a;">입장하기</button>
     </div>
@@ -127,6 +137,7 @@
     <div id="sidebar-scroll">
         <h2 style="color:var(--accent); text-align:center; margin:0;">2-4 <small style="font-size:10px;opacity:.65">touch-fix 2</small></h2>
         <div id="presence-badge">접속: —</div>
+        <div id="presence-list">접속자 불러오는 중…</div>
         <div class="tool-group">
             <strong>🖌️ 그리기 · 오브젝트는 보드 아래 🗑️에 놓으면 삭제</strong>
             <div class="grid-2">
@@ -163,8 +174,17 @@
 
         <div class="tool-group">
             <strong>🎮 Game (17-24)</strong>
-            <div id="shiri-val" style="font-size:11px; color:var(--accent);">현재: 없음</div>
-            <input type="text" id="wordIn" placeholder="17. 끝말잇기 (엔터)" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); box-sizing:border-box;">
+            <div id="shiri-panel">
+                <div id="shiri-val" style="color:var(--accent);">끝말잇기: 대기 중</div>
+                <select id="shiri-opponent" style="width:100%;padding:8px;margin-top:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;"><option value="">접속자 선택</option></select>
+                <button type="button" onclick="challengeShiri()" style="width:100%;margin-top:5px;">⚔️ 끝말잇기 신청</button>
+                <div id="shiri-game" style="display:none;margin-top:6px;">
+                    <div id="shiri-turn" style="font-weight:700;margin-bottom:4px;"></div>
+                    <input type="text" id="wordIn" placeholder="단어 입력" style="width:100%;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;box-sizing:border-box;">
+                    <div class="row"><button type="button" onclick="playShiri()">단어 내기</button><button type="button" onclick="forfeitShiri()" style="background:#b91c1c;">포기</button></div>
+                    <div id="shiri-log"></div>
+                </div>
+            </div>
             <div class="grid-2">
                 <button type="button" onclick="createObj('poll')">18. 🗳️ 투표 시작</button>
                 <button type="button" onclick="createObj('rsp')">19. ✌️ 가위바위보</button>
@@ -201,6 +221,7 @@
                 <button type="button" onclick="createObj('feedback')">38. 💬 피드백</button>
                 <button type="button" onclick="toggleTheme()">39. 🌙 테마변경</button>
                 <button type="button" onclick="resetAll()" style="background:#b91c1c;">40. 💣 전체초기화</button>
+                <button type="button" onclick="openAdmin()" style="background:#7c3aed;grid-column:1/-1;">👑 방장 기능</button>
             </div>
         </div>
     </div>
@@ -224,6 +245,13 @@
     </div>
 </div>
 
+<div id="admin-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><h3 style="margin:0;color:var(--accent);">👑 2-4 방장 기능</h3><button type="button" onclick="closeAdmin()">닫기</button></div>
+    <p style="font-size:11px;opacity:.8;">표시 정보: 닉네임, 접속 시각, 접속 상태, 끝말잇기 상태. IP·정확한 위치 같은 개인정보는 수집하지 않습니다.</p>
+    <div class="tool-group"><strong>🔐 시간 외 입장 비밀번호</strong><input type="text" id="admin-access-pw" placeholder="새 비밀번호"><button type="button" onclick="changeAccessPassword()">비밀번호 변경</button><small>수요일 14:00~15:20에는 비밀번호 없이 입장. 그 외 시간에는 이 비밀번호 필요.</small></div>
+    <div class="tool-group"><strong>👥 접속자 관리</strong><div id="admin-users"></div></div>
+</div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, push, onChildAdded, onChildRemoved, set, remove, onValue, update, get, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -243,6 +271,10 @@
     const objRef = ref(db, 'objects');
     const chatRef = ref(db, 'chats');
     const shiriRef = ref(db, 'shiri');
+    const shiriInvitesRef = ref(db, 'shiriInvites');
+    const shiriGamesRef = ref(db, 'shiriGames');
+    const accessPasswordRef = ref(db, 'meta/accessPassword');
+    const kicksRef = ref(db, 'kicks');
     const presenceRoot = ref(db, 'presence');
     const metaEpochRef = ref(db, 'meta/sessionEpoch');
 
@@ -270,8 +302,11 @@
         }
     });
 
-    const RESET_PASSWORD = '6974';
-    const RESET_PATHS = ['drawing', 'objects', 'chats', 'shiri', 'presence'];
+    const RESET_PASSWORD = '5263815731';
+    const ADMIN_PASSWORD = '7116';
+    const DEFAULT_ACCESS_PASSWORD = '7116';
+    const BANNED_WORDS = ['수따','이따','담따','이담따','혜성','안혜성','차헌철','윤미','유미','김윤정','이율이','이은채','은채','배한나','채현기','주따','주전자','은혜'];
+    const RESET_PATHS = ['drawing', 'objects', 'chats', 'shiri', 'presence', 'shiriInvites', 'shiriGames', 'kicks'];
 
     let userName = "손님";
     let camX = 0, camY = 0, isDrawing = false, currentTool = 'pen';
@@ -281,6 +316,11 @@
     let myStrokeStack = [];
     let gridVisible = true;
     let presenceRef = null;
+    let sessionId = null;
+    let currentPresence = {};
+    let currentShiriGameId = null;
+    let currentShiriGame = null;
+    let adminUnlocked = false;
 
     const viewport = document.getElementById('viewport');
     const board = document.getElementById('board');
@@ -373,30 +413,92 @@
         if (st) { st.textContent = '⚠'; st.title = 'Firebase/스크립트 오류 발생'; }
     });
     // --- 입장 · 접속 ---
-    window.enterStation = () => {
+    function isFreeAccessTime() {
+        const parts = new Intl.DateTimeFormat('en-US', { timeZone:'Asia/Seoul', weekday:'short', hour:'2-digit', minute:'2-digit', hour12:false }).formatToParts(new Date());
+        const getp = t => parts.find(x => x.type === t)?.value || '';
+        const day = getp('weekday');
+        const mins = (+getp('hour')) * 60 + (+getp('minute'));
+        return day === 'Wed' && mins >= 14*60 && mins <= 15*60+20;
+    }
+    async function refreshAccessHint() {
+        const free = isFreeAccessTime();
+        document.getElementById('access-password-wrap').style.display = free ? 'none' : 'block';
+        document.getElementById('access-hint').textContent = free ? '수요일 14:00~15:20 자유 입장 시간' : '현재는 시간 외 입장이라 비밀번호가 필요합니다.';
+    }
+    refreshAccessHint();
+
+    window.enterStation = async () => {
         const input = document.getElementById('nickname-input');
         const name = input.value.trim();
-        if (!name) return alert("이름을 입력해주세요!");
+        if (!name) return alert('이름을 입력해주세요!');
+        if (!isFreeAccessTime()) {
+            const snap = await get(accessPasswordRef);
+            const required = snap.val() || DEFAULT_ACCESS_PASSWORD;
+            const typed = document.getElementById('access-password').value;
+            if (typed !== required) return alert('입장 비밀번호가 올바르지 않습니다.');
+        }
         userName = name.slice(0, 40);
         document.getElementById('login-overlay').style.display = 'none';
-        push(chatRef, { type: 'text', user: '시스템', msg: `${userName}님이 입장하셨습니다.` });
-        const key = userName.replace(/[.#$\[\]]/g, '_');
-        presenceRef = ref(db, `presence/${key}`);
-        set(presenceRef, { name: userName, t: Date.now() });
+        push(chatRef, { type:'text', user:'시스템', msg:`${userName}님이 입장하셨습니다.`, t:Date.now() });
+        presenceRef = push(presenceRoot);
+        sessionId = presenceRef.key;
+        set(presenceRef, { name:userName, t:Date.now(), status:'online', sessionId });
         onDisconnect(presenceRef).remove();
+        onValue(ref(db, `kicks/${sessionId}`), snap => {
+            if (snap.exists()) {
+                alert('방장에 의해 추방되었습니다.');
+                remove(presenceRef).finally(() => location.reload());
+            }
+        });
+        listenForShiriInvites();
     };
 
     onValue(presenceRoot, s => {
-        const n = s.exists() ? Object.keys(s.val()).length : 0;
+        currentPresence = s.val() || {};
+        const entries = Object.entries(currentPresence);
         const el = document.getElementById('presence-badge');
-        if (el) el.textContent = `접속: ${n}명`;
+        if (el) el.textContent = `접속: ${entries.length}명`;
+        const list = document.getElementById('presence-list');
+        if (list) list.innerHTML = entries.length ? entries.map(([id,u]) => `🟢 ${escapeHtml(u.name || '손님')}`).join('<br>') : '접속자 없음';
+        const sel = document.getElementById('shiri-opponent');
+        if (sel) {
+            const old = sel.value;
+            sel.innerHTML = '<option value="">접속자 선택</option>' + entries.filter(([id]) => id !== sessionId).map(([id,u]) => `<option value="${id}">${escapeHtml(u.name || '손님')}</option>`).join('');
+            if ([...sel.options].some(o => o.value === old)) sel.value = old;
+        }
+        if (adminUnlocked) renderAdminUsers();
     });
 
-    window.showPresenceCount = () => {
-        get(presenceRoot).then(s => {
-            const n = s.exists() ? Object.keys(s.val()).length : 0;
-            alert(`현재 접속자 수: ${n}명`);
-        });
+    window.showPresenceCount = () => alert(`현재 접속자 수: ${Object.keys(currentPresence).length}명\n` + Object.values(currentPresence).map(u => u.name).join(', '));
+
+    window.openAdmin = () => {
+        const pw = prompt('방장 비밀번호:');
+        if (pw !== ADMIN_PASSWORD) return alert('방장 비밀번호가 올바르지 않습니다.');
+        adminUnlocked = true;
+        document.getElementById('admin-panel').classList.add('open');
+        get(accessPasswordRef).then(s => document.getElementById('admin-access-pw').value = s.val() || DEFAULT_ACCESS_PASSWORD);
+        renderAdminUsers();
+    };
+    window.closeAdmin = () => document.getElementById('admin-panel').classList.remove('open');
+    function renderAdminUsers() {
+        const box = document.getElementById('admin-users'); if (!box) return;
+        const rows = Object.entries(currentPresence);
+        box.innerHTML = rows.length ? rows.map(([id,u]) => `<div class="admin-user"><b>${escapeHtml(u.name || '손님')}</b><br><small>접속: ${new Date(u.t || Date.now()).toLocaleString('ko-KR')} · 상태: ${escapeHtml(u.status || 'online')}</small><br><button type="button" data-kick="${id}" style="margin-top:5px;background:#b91c1c;">추방</button></div>`).join('') : '접속자 없음';
+        box.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => kickUser(b.dataset.kick));
+    }
+    window.kickUser = async id => {
+        if (!adminUnlocked) return;
+        const u = currentPresence[id]; if (!u) return;
+        if (!confirm(`${u.name}님을 추방할까요?`)) return;
+        await set(ref(db, `kicks/${id}`), { t:Date.now(), by:userName || '방장' });
+        await remove(ref(db, `presence/${id}`));
+    };
+    window.changeAccessPassword = async () => {
+        if (!adminUnlocked) return;
+        const v = document.getElementById('admin-access-pw').value.trim();
+        if (v.length < 1 || v.length > 40) return alert('비밀번호를 1~40자로 입력하세요.');
+        await set(accessPasswordRef, v);
+        alert('시간 외 입장 비밀번호를 변경했습니다.');
     };
 
     // --- 테마 · 격자 ---
@@ -570,10 +672,16 @@
     // --- 채팅 ---
     window.sendChat = () => {
         const i = document.getElementById('chatInput');
-        if (i.value.trim()) {
-            push(chatRef, { type: 'text', user: userName, msg: i.value.trim() });
+        const msg = i.value.trim();
+        if (!msg) return;
+        const hit = BANNED_WORDS.find(w => msg.includes(w));
+        if (hit) {
+            push(chatRef, { type:'text', user:userName, msg:'🚫 검열되었습니다.', censored:true, t:Date.now() });
             i.value = '';
+            return alert('금지어가 포함되어 검열되었습니다.');
         }
+        push(chatRef, { type:'text', user:userName, msg, t:Date.now() });
+        i.value = '';
     };
     document.getElementById('chatInput')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') sendChat();
@@ -1393,21 +1501,69 @@
         push(chatRef, { type: 'text', user: '게임', msg: `${userName}님이 ${c}를 냈습니다!` });
     };
 
-    window.playShiri = () => {
-        const i = document.getElementById('wordIn');
-        const n = i.value.trim();
-        if (!n) return;
-        get(shiriRef).then(s => {
-            const l = s.val() || '';
-            if (l && l.slice(-1) !== n.charAt(0)) { alert('땡!'); return; }
-            set(shiriRef, n);
-            push(chatRef, { type: 'text', user: '게임', msg: `끝말잇기: ${n}` });
-            i.value = '';
-        });
+    function lastChar(word) { return Array.from(word.trim()).at(-1) || ''; }
+    function firstChar(word) { return Array.from(word.trim())[0] || ''; }
+    window.challengeShiri = async () => {
+        if (!sessionId) return alert('먼저 입장하세요.');
+        const target = document.getElementById('shiri-opponent').value;
+        if (!target) return alert('대전할 접속자를 선택하세요.');
+        const opponent = currentPresence[target]; if (!opponent) return alert('상대가 접속 중이 아닙니다.');
+        const inv = push(shiriInvitesRef);
+        await set(inv, { from:sessionId, fromName:userName, to:target, toName:opponent.name, status:'pending', t:Date.now() });
+        alert(`${opponent.name}님에게 끝말잇기를 신청했습니다.`);
     };
-    onValue(shiriRef, s => {
-        document.getElementById('shiri-val').innerText = '현재: ' + (s.val() || '없음');
+    function listenForShiriInvites() {
+        onChildAdded(shiriInvitesRef, snap => {
+            const v = snap.val();
+            if (!v || v.to !== sessionId || v.status !== 'pending') return;
+            set(ref(db, `shiriInvites/${snap.key}/status`), 'seen');
+            if (confirm(`${v.fromName}님이 끝말잇기를 신청했습니다. 수락할까요?`)) acceptShiriInvite(snap.key, v);
+            else set(ref(db, `shiriInvites/${snap.key}/status`), 'declined');
+        });
+    }
+    async function acceptShiriInvite(inviteId, inv) {
+        const game = push(shiriGamesRef);
+        await set(game, { p1:inv.from, p1Name:inv.fromName, p2:sessionId, p2Name:userName, turn:inv.from, lastWord:'', words:{}, status:'playing', winner:'', created:Date.now() });
+        await update(ref(db, `shiriInvites/${inviteId}`), { status:'accepted', gameId:game.key });
+        watchShiriGame(game.key);
+    }
+    onChildAdded(shiriGamesRef, snap => {
+        const g=snap.val(); if (!g || !sessionId || g.status!=='playing') return;
+        if (g.p1===sessionId || g.p2===sessionId) watchShiriGame(snap.key);
     });
+    function watchShiriGame(id) {
+        if (currentShiriGameId === id) return;
+        currentShiriGameId=id;
+        onValue(ref(db, `shiriGames/${id}`), snap => {
+            const g=snap.val(); if (!g) return;
+            currentShiriGame=g;
+            const gameBox=document.getElementById('shiri-game'); gameBox.style.display='block';
+            const opponent = g.p1===sessionId ? g.p2Name : g.p1Name;
+            document.getElementById('shiri-val').textContent = `끝말잇기 대전: ${opponent}`;
+            const turnName = g.turn===g.p1 ? g.p1Name : g.p2Name;
+            document.getElementById('shiri-turn').textContent = g.status==='playing' ? `현재 차례: ${turnName}${g.lastWord ? ` · '${lastChar(g.lastWord)}'로 시작` : ' · 첫 단어 자유'}` : `게임 종료 · 승자: ${g.winner || '없음'}`;
+            const words = Object.values(g.words || {}).sort((a,b)=>(a.t||0)-(b.t||0));
+            document.getElementById('shiri-log').innerHTML = words.map(w=>`<div><b>${escapeHtml(w.name)}</b>: ${escapeHtml(w.word)}</div>`).join('') || '아직 나온 단어 없음';
+            if (g.status==='ended') alert(`끝말잇기 종료! 승자: ${g.winner}`);
+        });
+    }
+    window.playShiri = async () => {
+        const i=document.getElementById('wordIn'); const n=i.value.trim();
+        const g=currentShiriGame; if (!n || !g || g.status!=='playing') return;
+        if (g.turn !== sessionId) return alert('상대 차례입니다.');
+        if (g.lastWord && firstChar(n) !== lastChar(g.lastWord)) return alert(`'${lastChar(g.lastWord)}'로 시작해야 합니다.`);
+        const used=Object.values(g.words||{}).some(w=>w.word===n); if (used) return alert('이미 나온 단어입니다.');
+        const other = g.p1===sessionId ? g.p2 : g.p1;
+        const wordRef=push(ref(db, `shiriGames/${currentShiriGameId}/words`));
+        await set(wordRef,{name:userName,word:n,t:Date.now()});
+        await update(ref(db, `shiriGames/${currentShiriGameId}`),{lastWord:n,turn:other});
+        i.value='';
+    };
+    window.forfeitShiri = async () => {
+        const g=currentShiriGame; if(!g || g.status!=='playing') return;
+        const winner = g.p1===sessionId ? g.p2Name : g.p1Name;
+        await update(ref(db, `shiriGames/${currentShiriGameId}`),{status:'ended',winner,ended:Date.now()});
+    };
 
     window.setTool = t => {
         currentTool = t;
@@ -1455,6 +1611,7 @@
             suppressEpochReload = true;
             await set(metaEpochRef, epoch);
             await Promise.all(RESET_PATHS.map(p => remove(ref(db, p))));
+            await set(accessPasswordRef, DEFAULT_ACCESS_PASSWORD);
             suppressEpochReload = false;
             location.reload();
         } catch (e) {
